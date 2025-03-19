@@ -42,7 +42,7 @@ To use this MCP server with Claude Desktop, add the following to your `claude_de
   "mcpServers": {
     "task-planner": {
       "command": "node",
-      "args": ["/absolute/path/to/task-planner-mcp/build/index.js"]
+      "args": ["/absolute/path/to/task-planner-mcp/dist/index.js"]
     }
   }
 }
