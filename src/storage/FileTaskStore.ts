@@ -15,14 +15,30 @@ export class FileTaskStore {
     try {
       const data = await fs.readFile(this.filePath, "utf-8");
       const taskArray = JSON.parse(data);
+
+      // Filter out any tasks without projectId or add a default projectId
+      // This handles existing data that might not have projectId
       this.tasks = new Map(
-        taskArray.map((task: Task) => {
-          // Convert string dates back to Date objects
-          task.createdAt = new Date(task.createdAt);
-          task.updatedAt = new Date(task.updatedAt);
-          return [task.id, task];
-        })
+        taskArray
+          .map((task: any) => {
+            // Convert string dates back to Date objects
+            task.createdAt = new Date(task.createdAt);
+            task.updatedAt = new Date(task.updatedAt);
+
+            // Ensure all tasks have a projectId (required)
+            if (!task.projectId) {
+              console.error(`Task ${task.id} missing projectId, skipping`);
+              return null;
+            }
+
+            return [task.id, task as Task];
+          })
+          .filter(
+            (entry: [string, Task] | null): entry is [string, Task] =>
+              entry !== null
+          )
       );
+
       console.error(`Loaded ${this.tasks.size} tasks from storage`);
     } catch (error) {
       // If file doesn't exist or can't be parsed, start with empty tasks
@@ -63,6 +79,7 @@ export class FileTaskStore {
   }
 
   async getRootTasks(): Promise<Task[]> {
+    // Return all tasks without a parent, grouped by project
     return Array.from(this.tasks.values()).filter((task) => !task.parentId);
   }
 
@@ -74,6 +91,7 @@ export class FileTaskStore {
       description: input.description,
       completed: false,
       parentId: input.parentId,
+      projectId: input.projectId, // Required field now
       childTasks: [],
       createdAt: now,
       updatedAt: now,
@@ -139,5 +157,19 @@ export class FileTaskStore {
 
   async completeTask(id: string): Promise<Task | undefined> {
     return this.updateTask(id, { completed: true });
+  }
+
+  // New method to get tasks by project
+  async getTasksByProject(projectId: string): Promise<Task[]> {
+    return Array.from(this.tasks.values()).filter(
+      (task) => task.projectId === projectId
+    );
+  }
+
+  // Method to get root tasks for a project (tasks without a parent but with projectId)
+  async getProjectRootTasks(projectId: string): Promise<Task[]> {
+    return Array.from(this.tasks.values()).filter(
+      (task) => !task.parentId && task.projectId === projectId
+    );
   }
 }
