@@ -73,10 +73,10 @@ export async function createRequirement(input: {
   description: string;
   type: string;
   priority: string;
-  tags?: string[];
+  status: string;
 }) {
   try {
-    const { projectId, title, description, type, priority, tags } = input;
+    const { projectId, title, description, type, priority, status } = input;
 
     // Validate type
     const validatedType = validateRequirementType(type);
@@ -92,17 +92,25 @@ export async function createRequirement(input: {
     if (!validatedPriority) {
       return {
         success: false,
-        error: `Invalid requirement priority: ${priority}. Valid priorities are: low, medium, high, critical`,
+        error: `Invalid requirement priority: ${priority}. Valid priorities are: low, medium, high`,
       };
     }
 
+    // Validate status
+    const validatedStatus = validateRequirementStatus(status);
+    if (!validatedStatus) {
+      return {
+        success: false,
+        error: `Invalid requirement status: ${status}. Valid statuses are: draft, approved, implemented`,
+      };
+    }
     const requirement = await requirementsApi.createRequirement({
       projectId,
       title,
       description,
       type: validatedType,
       priority: validatedPriority,
-      tags,
+      status: validatedStatus,
     });
 
     return {
@@ -129,10 +137,9 @@ export async function updateRequirement(input: {
   type?: string;
   priority?: string;
   status?: string;
-  tags?: string[];
 }) {
   try {
-    const { id, title, description, type, priority, status, tags } = input;
+    const { id, title, description, type, priority, status } = input;
 
     // Validate type if provided
     let validatedType: RequirementType | undefined;
@@ -153,7 +160,7 @@ export async function updateRequirement(input: {
       if (!validatedPriority) {
         return {
           success: false,
-          error: `Invalid requirement priority: ${priority}. Valid priorities are: low, medium, high, critical`,
+          error: `Invalid requirement priority: ${priority}. Valid priorities are: low, medium, high`,
         };
       }
     }
@@ -165,7 +172,7 @@ export async function updateRequirement(input: {
       if (!validatedStatus) {
         return {
           success: false,
-          error: `Invalid requirement status: ${status}. Valid statuses are: draft, proposed, approved, rejected, implemented, verified`,
+          error: `Invalid requirement status: ${status}. Valid statuses are: draft, approved, implemented`,
         };
       }
     }
@@ -176,7 +183,6 @@ export async function updateRequirement(input: {
       type: validatedType,
       priority: validatedPriority,
       status: validatedStatus,
-      tags,
     });
 
     if (!requirement) {
@@ -462,12 +468,7 @@ function validateRequirementType(type: string): RequirementType | undefined {
 function validateRequirementPriority(
   priority: string
 ): RequirementPriority | undefined {
-  const validPriorities: RequirementPriority[] = [
-    "low",
-    "medium",
-    "high",
-    "critical",
-  ];
+  const validPriorities: RequirementPriority[] = ["low", "medium", "high"];
 
   const normalizedPriority = priority.toLowerCase() as RequirementPriority;
   return validPriorities.includes(normalizedPriority)
@@ -480,11 +481,8 @@ function validateRequirementStatus(
 ): RequirementStatus | undefined {
   const validStatuses: RequirementStatus[] = [
     "draft",
-    "proposed",
     "approved",
-    "rejected",
     "implemented",
-    "verified",
   ];
 
   const normalizedStatus = status.toLowerCase() as RequirementStatus;

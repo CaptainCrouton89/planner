@@ -3,14 +3,8 @@ export type RequirementType =
   | "technical"
   | "non-functional"
   | "user_story";
-export type RequirementPriority = "low" | "medium" | "high" | "critical";
-export type RequirementStatus =
-  | "draft"
-  | "proposed"
-  | "approved"
-  | "rejected"
-  | "implemented"
-  | "verified";
+export type RequirementPriority = "low" | "medium" | "high";
+export type RequirementStatus = "draft" | "approved" | "implemented";
 
 export interface Requirement {
   id: string;
@@ -20,7 +14,6 @@ export interface Requirement {
   type: RequirementType;
   priority: RequirementPriority;
   status: RequirementStatus;
-  tags: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,7 +24,7 @@ export interface RequirementInput {
   description: string;
   type: RequirementType;
   priority: RequirementPriority;
-  tags?: string[];
+  status: RequirementStatus;
 }
 
 export interface UpdateRequirementInput {
@@ -40,7 +33,6 @@ export interface UpdateRequirementInput {
   type?: RequirementType;
   priority?: RequirementPriority;
   status?: RequirementStatus;
-  tags?: string[];
 }
 
 export interface DiscoverySession {
@@ -69,8 +61,8 @@ export interface DiscoveryInput {
 }
 
 export interface DiscoveryResponse {
-  questions: string[];
-  suggestions: string[];
+  questions: string;
+  suggestions: string;
   nextStage?: DiscoveryStage;
 }
 

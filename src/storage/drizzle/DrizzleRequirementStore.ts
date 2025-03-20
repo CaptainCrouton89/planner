@@ -3,7 +3,6 @@ import { v4 as uuidv4 } from "uuid";
 import {
   RequirementInput,
   Requirement as RequirementModel,
-  RequirementPriority,
   UpdateRequirementInput,
 } from "../../core/Requirement.js";
 import {
@@ -31,7 +30,7 @@ export class DrizzleRequirementStore {
       const result = await db
         .select()
         .from(requirements)
-        .orderBy(desc(requirements.updatedAt));
+        .orderBy(requirements.updatedAt);
       return result.map(this.mapToRequirementModel);
     } catch (error) {
       console.error("Error fetching requirements:", error);
@@ -62,20 +61,14 @@ export class DrizzleRequirementStore {
       const id = uuidv4();
       const now = new Date();
 
-      // Map the priority to the enum values in the database
-      // If it's "critical", we'll use "high" as the DB doesn't have "critical"
-      const dbPriority =
-        input.priority === "critical" ? "high" : input.priority;
-
       const newRequirement: NewRequirement = {
         id,
         projectId: input.projectId,
         title: input.title,
         description: input.description,
         type: input.type,
-        priority: dbPriority,
-        status: "draft", // Default status
-        tags: input.tags || [],
+        priority: input.priority,
+        status: "draft",
         createdAt: now,
         updatedAt: now,
       };
@@ -90,7 +83,6 @@ export class DrizzleRequirementStore {
         type: input.type,
         priority: input.priority,
         status: "draft",
-        tags: input.tags || [],
         createdAt: now,
         updatedAt: now,
       };
@@ -129,20 +121,12 @@ export class DrizzleRequirementStore {
       }
 
       if (input.priority !== undefined) {
-        // Map the priority to the enum values in the database
-        // If it's "critical", we'll use "high" as the DB doesn't have "critical"
-        updateData.priority =
-          input.priority === "critical" ? "high" : input.priority;
+        updateData.priority = input.priority;
       }
 
       if (input.status !== undefined) {
         updateData.status = input.status;
       }
-
-      if (input.tags !== undefined) {
-        updateData.tags = input.tags;
-      }
-
       // Update the requirement
       await db
         .update(requirements)
@@ -183,7 +167,7 @@ export class DrizzleRequirementStore {
         .select()
         .from(requirements)
         .where(eq(requirements.projectId, projectId))
-        .orderBy(desc(requirements.updatedAt));
+        .orderBy(requirements.updatedAt);
 
       return result.map(this.mapToRequirementModel);
     } catch (error) {
@@ -227,21 +211,10 @@ export class DrizzleRequirementStore {
       title: requirement.title,
       description: requirement.description,
       type: requirement.type,
-      priority: this.mapDbPriorityToModel(requirement.priority),
+      priority: requirement.priority,
       status: requirement.status,
-      tags: requirement.tags || [],
       createdAt: requirement.createdAt || new Date(),
       updatedAt: requirement.updatedAt || new Date(),
     };
-  }
-
-  // Convert database priority to model priority (adding "critical" support)
-  private mapDbPriorityToModel(
-    priority: "low" | "medium" | "high" | null
-  ): RequirementPriority {
-    if (priority === null) {
-      return "medium"; // Default priority
-    }
-    return priority as RequirementPriority;
   }
 }

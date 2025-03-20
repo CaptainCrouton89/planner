@@ -9,6 +9,8 @@ import { completeTask, createTask, deleteTask, getTask, listChildTasks, listProj
 const server = new McpServer({
     name: "Task and Requirement Planner",
     version: "1.0.0",
+}, {
+    instructions: "Use these tools to help the user plan their tasks and requirements for large programming projects.",
 });
 // Tool: Create a new project
 server.tool("create-project", "Create a new project", {
@@ -551,10 +553,12 @@ server.tool("create-requirement", "Create a new requirement", {
         .enum(["functional", "technical", "non-functional", "user_story"])
         .describe("Type of requirement"),
     priority: z
-        .enum(["low", "medium", "high", "critical"])
+        .enum(["low", "medium", "high"])
         .describe("Priority level of the requirement"),
-    tags: z.array(z.string()).optional().describe("Tags for the requirement"),
-}, async ({ projectId, title, description, type, priority, tags }) => {
+    status: z
+        .enum(["draft", "approved", "implemented"])
+        .describe("Status of the requirement"),
+}, async ({ projectId, title, description, type, priority }) => {
     // Verify the project exists
     const projectResult = await getProject({ id: projectId });
     if (!projectResult.success) {
@@ -575,7 +579,7 @@ server.tool("create-requirement", "Create a new requirement", {
         description,
         type,
         priority,
-        tags,
+        status,
     });
     if (!result.success) {
         return {
@@ -632,13 +636,11 @@ server.tool("list-requirements", "List all requirements for a project", {
         };
     }
     const formatRequirement = (req) => {
-        const priorityMarker = req.priority === "critical"
-            ? "🔴"
-            : req.priority === "high"
-                ? "⚠️"
-                : req.priority === "medium"
-                    ? "⚡"
-                    : "📋";
+        const priorityMarker = req.priority === "high"
+            ? "⚠️"
+            : req.priority === "medium"
+                ? "⚡"
+                : "📋";
         return `${priorityMarker} ${req.title} [${req.type}] (ID: ${req.id})`;
     };
     const requirements = result.requirements || [];
@@ -668,26 +670,14 @@ server.tool("update-requirement", "Update a requirement's details", {
         .optional()
         .describe("New type for the requirement"),
     priority: z
-        .enum(["low", "medium", "high", "critical"])
+        .enum(["low", "medium", "high"])
         .optional()
         .describe("New priority level for the requirement"),
     status: z
-        .enum([
-        "draft",
-        "review",
-        "approved",
-        "implemented",
-        "verified",
-        "deferred",
-        "rejected",
-    ])
+        .enum(["draft", "approved", "implemented"])
         .optional()
         .describe("New status for the requirement"),
-    tags: z
-        .array(z.string())
-        .optional()
-        .describe("New tags for the requirement"),
-}, async ({ id, title, description, type, priority, status, tags }) => {
+}, async ({ id, title, description, type, priority, status }) => {
     const result = await updateRequirement({
         id,
         title,
@@ -695,7 +685,6 @@ server.tool("update-requirement", "Update a requirement's details", {
         type,
         priority,
         status,
-        tags,
     });
     if (!result.success) {
         return {
@@ -837,16 +826,11 @@ server.tool("guided-requirement-discovery", "Start guided discovery process for 
             isError: true,
         };
     }
-    // Get the questions from the response
-    const questions = result.response?.questions || [];
-    const promptText = questions.length > 0
-        ? questions.join("\n\n")
-        : "No discovery questions available";
     return {
         content: [
             {
                 type: "text",
-                text: promptText,
+                text: result.response?.questions || "No discovery questions available",
             },
         ],
     };
@@ -889,16 +873,11 @@ server.tool("process-discovery-response", "Process a response from guided discov
             isError: true,
         };
     }
-    // Use the suggestions from the response
-    const suggestions = result.response?.suggestions || [];
-    const messageText = suggestions.length > 0
-        ? suggestions.join("\n\n")
-        : "Response processed successfully";
     return {
         content: [
             {
                 type: "text",
-                text: messageText,
+                text: result.response?.suggestions || "No suggestions available",
             },
         ],
     };

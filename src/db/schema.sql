@@ -1,7 +1,7 @@
 -- Create custom ENUMs
 CREATE TYPE IF NOT EXISTS priority AS ENUM ('low', 'medium', 'high');
 CREATE TYPE IF NOT EXISTS requirement_type AS ENUM ('functional', 'technical', 'non-functional', 'user_story');
-CREATE TYPE IF NOT EXISTS requirement_status AS ENUM ('draft', 'proposed', 'approved', 'rejected', 'implemented', 'verified');
+CREATE TYPE IF NOT EXISTS requirement_status AS ENUM ('draft', 'approved', 'implemented');
 CREATE TYPE IF NOT EXISTS status AS ENUM ('unassigned', 'assigned', 'in_progress', 'review', 'completed');
 
 -- Projects table
@@ -36,7 +36,6 @@ CREATE TABLE IF NOT EXISTS requirements (
   type requirement_type NOT NULL,
   priority priority NOT NULL,
   status requirement_status NOT NULL DEFAULT 'draft',
-  tags JSONB DEFAULT '[]',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -66,12 +65,6 @@ CREATE TABLE IF NOT EXISTS technical_requirements (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
--- Tags table
-CREATE TABLE IF NOT EXISTS tags (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(50) NOT NULL UNIQUE
-);
-
 -- Acceptance Criteria Table
 CREATE TABLE IF NOT EXISTS acceptance_criteria (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -84,13 +77,6 @@ CREATE TABLE IF NOT EXISTS technical_requirement_dependencies (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   dependent_id UUID NOT NULL REFERENCES technical_requirements(id) ON DELETE CASCADE,
   dependency_id UUID NOT NULL REFERENCES technical_requirements(id) ON DELETE CASCADE
-);
-
--- Technical Requirement Tags
-CREATE TABLE IF NOT EXISTS technical_requirement_tags (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  technical_requirement_id UUID NOT NULL REFERENCES technical_requirements(id) ON DELETE CASCADE,
-  tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE
 );
 
 -- Functional Requirements Table
@@ -114,10 +100,3 @@ CREATE TABLE IF NOT EXISTS functional_requirement_dependencies (
   dependency_id UUID NOT NULL REFERENCES functional_requirements(id) ON DELETE CASCADE,
   technical_dependency_id UUID REFERENCES technical_requirements(id) ON DELETE CASCADE
 );
-
--- Functional Requirement Tags
-CREATE TABLE IF NOT EXISTS functional_requirement_tags (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  functional_requirement_id UUID NOT NULL REFERENCES functional_requirements(id) ON DELETE CASCADE,
-  tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE
-); 

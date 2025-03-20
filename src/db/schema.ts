@@ -48,11 +48,8 @@ export const requirementTypeEnum = pgEnum("requirement_type", [
 
 export const requirementStatusEnum = pgEnum("requirement_status", [
   "draft",
-  "proposed",
   "approved",
-  "rejected",
   "implemented",
-  "verified",
 ]);
 
 // Requirements table
@@ -66,7 +63,6 @@ export const requirements = pgTable("requirements", {
   type: requirementTypeEnum("type").notNull(),
   priority: priorityEnum("priority").notNull(),
   status: requirementStatusEnum("status").default("draft").notNull(),
-  tags: jsonb("tags").$type<string[]>().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
@@ -131,23 +127,6 @@ export const acceptanceCriteria = pgTable("acceptance_criteria", {
     .references(() => technicalRequirements.id, { onDelete: "cascade" }),
 });
 
-// Tags for Technical Requirements
-export const tags = pgTable("tags", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: varchar("name", { length: 50 }).notNull().unique(),
-});
-
-// Technical Requirement Tags (many-to-many)
-export const technicalRequirementTags = pgTable("technical_requirement_tags", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  technicalRequirementId: uuid("technical_requirement_id")
-    .notNull()
-    .references(() => technicalRequirements.id, { onDelete: "cascade" }),
-  tagId: uuid("tag_id")
-    .notNull()
-    .references(() => tags.id, { onDelete: "cascade" }),
-});
-
 // Functional Requirements Table
 export const functionalRequirements = pgTable("functional_requirements", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -183,20 +162,6 @@ export const functionalRequirementDependencies = pgTable(
   }
 );
 
-// Functional Requirement Tags (many-to-many)
-export const functionalRequirementTags = pgTable(
-  "functional_requirement_tags",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    functionalRequirementId: uuid("functional_requirement_id")
-      .notNull()
-      .references(() => functionalRequirements.id, { onDelete: "cascade" }),
-    tagId: uuid("tag_id")
-      .notNull()
-      .references(() => tags.id, { onDelete: "cascade" }),
-  }
-);
-
 // Types for use in the application
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
@@ -213,8 +178,6 @@ export type NewFunctionalRequirement =
   typeof functionalRequirements.$inferInsert;
 export type AcceptanceCriteria = typeof acceptanceCriteria.$inferSelect;
 export type NewAcceptanceCriteria = typeof acceptanceCriteria.$inferInsert;
-export type Tag = typeof tags.$inferSelect;
-export type NewTag = typeof tags.$inferInsert;
 export type TechnicalRequirementDependency =
   typeof technicalRequirementDependencies.$inferSelect;
 export type NewTechnicalRequirementDependency =
@@ -223,11 +186,3 @@ export type FunctionalRequirementDependency =
   typeof functionalRequirementDependencies.$inferSelect;
 export type NewFunctionalRequirementDependency =
   typeof functionalRequirementDependencies.$inferInsert;
-export type FunctionalRequirementTag =
-  typeof functionalRequirementTags.$inferSelect;
-export type NewFunctionalRequirementTag =
-  typeof functionalRequirementTags.$inferInsert;
-export type TechnicalRequirementTag =
-  typeof technicalRequirementTags.$inferSelect;
-export type NewTechnicalRequirementTag =
-  typeof technicalRequirementTags.$inferInsert;

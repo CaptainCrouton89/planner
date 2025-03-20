@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import { z } from "zod";
 import { db, discoverySessions, NewDiscoverySession } from "../db/index.js";
+import { requirementGeneratorAgent } from "../mastra/agents/index.js";
 import { DrizzleRequirementStore } from "../storage/drizzle/DrizzleRequirementStore.js";
 import {
   DiscoveryInput,
@@ -11,7 +13,6 @@ import {
   Requirement,
   RequirementInput,
   RequirementPriority,
-  RequirementType,
 } from "./Requirement.js";
 
 export class RequirementGenerator {
@@ -58,12 +59,14 @@ export class RequirementGenerator {
         input.previousResponses
       );
 
+      const suggestions = this.generateSuggestionsForStage(
+        input.stage,
+        input.domain
+      );
+
       return {
-        questions,
-        suggestions: this.generateSuggestionsForStage(
-          input.stage,
-          input.domain
-        ),
+        questions: await questions,
+        suggestions: await suggestions,
       };
     } catch (error) {
       console.error("Error in guidedRequirementDiscovery:", error);
@@ -103,7 +106,7 @@ export class RequirementGenerator {
         .where(eq(discoverySessions.id, session.id));
 
       // Determine if we should move to the next stage
-      const shouldAdvance = this.shouldAdvanceToNextStage(
+      const shouldAdvance = await this.shouldAdvanceToNextStage(
         input.stage,
         input.domain,
         input.response,
@@ -122,12 +125,14 @@ export class RequirementGenerator {
         input.previousResponses
       );
 
+      const suggestions = this.generateSuggestionsForStage(
+        input.stage,
+        input.domain
+      );
+
       return {
-        questions,
-        suggestions: this.generateSuggestionsForStage(
-          input.stage,
-          input.domain
-        ),
+        questions: await questions,
+        suggestions: await suggestions,
         nextStage,
       };
     } catch (error) {
@@ -166,10 +171,8 @@ export class RequirementGenerator {
           : JSON.stringify(allResponses);
 
       // Parse the combined responses and generate requirements
-      const requirements: RequirementInput[] = this.parseRequirementsFromText(
-        projectId,
-        combinedResponses
-      );
+      const requirements: RequirementInput[] =
+        await this.parseRequirementsFromText(projectId, combinedResponses);
 
       // Create the requirements in the database
       const createdRequirements: Requirement[] = [];
@@ -195,7 +198,7 @@ export class RequirementGenerator {
   ): Promise<Requirement> {
     try {
       // Parse the natural language description into a structured requirement
-      const requirementInput = this.parseRequirementFromText(
+      const requirementInput = await this.parseRequirementFromText(
         projectId,
         description
       );
@@ -261,113 +264,97 @@ export class RequirementGenerator {
     return id;
   }
 
-  private generateQuestionsForStage(
+  private async generateQuestionsForStage(
     stage: DiscoveryStage,
     domain: string,
     previousResponses?: string
-  ): string[] {
-    // In a real implementation, this would use an LLM to generate questions
-    // based on the stage, domain, and previous responses
+  ): Promise<string> {
+    const questions = await requirementGeneratorAgent.generate([
+      {
+        role: "user",
+        content: `
+        Generate questions for the ${stage} stage of the discovery process.
+        The domain is ${domain}.
+        The previous responses are ${previousResponses}.
+        `,
+      },
+    ]);
 
-    const questionsByStage: Record<DiscoveryStage, string[]> = {
-      initial: [
-        "What is the main problem your project aims to solve?",
-        "Who are the primary users or stakeholders?",
-        "What are the high-level goals of this project?",
-      ],
-      stakeholders: [
-        "Who will be using the system?",
-        "What are their key needs and pain points?",
-        "Are there any specific stakeholder constraints to consider?",
-      ],
-      features: [
-        "What are the core features needed for an MVP?",
-        "Are there any unique or differentiating features?",
-        "Which features would provide the most value to users?",
-      ],
-      constraints: [
-        "What are the budget constraints for this project?",
-        "Are there any specific timeline requirements?",
-        "Are there any technical limitations or restrictions?",
-      ],
-      quality: [
-        "What performance requirements are important?",
-        "How should the system handle errors and exceptions?",
-        "What security and privacy considerations are necessary?",
-      ],
-      finalize: [
-        "Are there any requirements we've missed?",
-        "Are there any requirements that need to be prioritized differently?",
-        "Do any requirements need further clarification?",
-      ],
-    };
-
-    return questionsByStage[stage] || [];
+    return questions.text;
   }
 
-  private generateSuggestionsForStage(
+  private async generateSuggestionsForStage(
     stage: DiscoveryStage,
     domain: string
-  ): string[] {
-    // In a real implementation, this would use an LLM to generate suggestions
-    // based on the stage and domain
+  ): Promise<string> {
+    const suggestions = await requirementGeneratorAgent.generate([
+      {
+        role: "user",
+        content: `
+        Generate suggestions for the ${stage} stage of the discovery process.
+        The domain is ${domain}.
+      `,
+      },
+    ]);
 
-    const suggestionsByStage: Record<DiscoveryStage, string[]> = {
-      initial: [
-        "Consider business objectives as well as user needs",
-        "Think about both short-term and long-term goals",
-      ],
-      stakeholders: [
-        "Consider both primary and secondary user groups",
-        "Think about administrative users as well as end users",
-      ],
-      features: [
-        "Prioritize must-have vs nice-to-have features",
-        "Consider how features align with business goals",
-      ],
-      constraints: [
-        "Consider regulatory and compliance requirements",
-        "Think about scalability and future growth",
-      ],
-      quality: [
-        "Consider accessibility requirements",
-        "Think about how to measure and test quality attributes",
-      ],
-      finalize: [
-        "Review for consistency and completeness",
-        "Consider if requirements are testable and measurable",
-      ],
-    };
-
-    return suggestionsByStage[stage] || [];
+    return suggestions.text;
   }
 
-  private generateFollowUpQuestions(
+  private async generateFollowUpQuestions(
     stage: DiscoveryStage,
     domain: string,
     response: string,
     previousResponses?: string
-  ): string[] {
-    // In a real implementation, this would analyze the response using an LLM
-    // and generate tailored follow-up questions
-    return [
-      "Can you elaborate more on that?",
-      "Are there any specific examples you can provide?",
-      "How would you prioritize this compared to other needs?",
-    ];
+  ): Promise<string> {
+    const questions = await requirementGeneratorAgent.generate([
+      {
+        role: "user",
+        content: `
+        Generate follow-up questions for the ${stage} stage of the discovery process.
+        The domain is ${domain}.
+        The previous responses are ${previousResponses}.
+        The response is ${response}.
+        `,
+      },
+    ]);
+
+    return questions.text;
   }
 
-  private shouldAdvanceToNextStage(
+  private async shouldAdvanceToNextStage(
     currentStage: DiscoveryStage,
     domain: string,
     response: string,
     previousResponses?: string
-  ): boolean {
-    // In a real implementation, this would use an LLM to analyze the completeness
-    // of responses for the current stage
+  ): Promise<boolean> {
+    const schema = z.object({
+      shouldAdvance: z
+        .boolean()
+        .default(false)
+        .describe("Whether to advance to the next stage"),
+    });
 
-    // For now, just a simple implementation that randomly decides
-    return Math.random() > 0.7;
+    const shouldAdvance = await requirementGeneratorAgent.generate(
+      [
+        {
+          role: "user",
+          content: `
+        Should we advance to the next stage of the discovery process?
+        The current stage is ${currentStage}.
+        The domain is ${domain}.
+        The previous responses are ${previousResponses}.
+        The response is ${response}.
+
+        Output only valid JSON, nothing else.
+        `,
+        },
+      ],
+      {
+        output: schema,
+      }
+    );
+
+    return shouldAdvance.object.shouldAdvance;
   }
 
   private getNextStage(
@@ -390,15 +377,27 @@ export class RequirementGenerator {
     return stages[currentIndex + 1];
   }
 
-  private parseRequirementsFromText(
+  private async parseRequirementsFromText(
     projectId: string,
     text: string
-  ): RequirementInput[] {
-    // In a real implementation, this would use an LLM to parse requirements
-    // from the text of discovery responses
+  ): Promise<RequirementInput[]> {
+    const schema = z.array(
+      z.object({
+        projectId: z.string(),
+        title: z.string(),
+        description: z.string(),
+        type: z.string(),
+        priority: z.string().transform((val) => val as RequirementPriority),
+      })
+    );
 
-    // Placeholder implementation
-    return [
+    const requirements = await requirementGeneratorAgent.generate(
+      [
+        {
+          role: "user",
+          content: `
+        Parse the following text into requirements, using this as example:
+[
       {
         projectId,
         title: "Example Requirement 1",
@@ -406,7 +405,6 @@ export class RequirementGenerator {
           "This is an example requirement parsed from discovery responses",
         type: "functional",
         priority: "high",
-        tags: ["example", "discovery"],
       },
       {
         projectId,
@@ -415,90 +413,68 @@ export class RequirementGenerator {
           "This is another example requirement parsed from discovery responses",
         type: "technical",
         priority: "medium",
-        tags: ["example", "discovery"],
       },
     ];
-  }
 
-  private parseRequirementFromText(
-    projectId: string,
-    description: string
-  ): RequirementInput {
-    // In a real implementation, this would use an LLM to parse a requirement
-    // from natural language
+    ${text}
 
-    // Extract a title from the first sentence or phrase
-    const title = description.split(/[.!?]/)[0].trim();
-
-    // Determine the type based on keywords
-    let type: RequirementType = "functional";
-    if (
-      description.toLowerCase().includes("technical") ||
-      description.toLowerCase().includes("implementation") ||
-      description.toLowerCase().includes("architecture")
-    ) {
-      type = "technical";
-    } else if (
-      description.toLowerCase().includes("user story") ||
-      description.toLowerCase().includes("as a user")
-    ) {
-      type = "user_story";
-    } else if (
-      description.toLowerCase().includes("performance") ||
-      description.toLowerCase().includes("security") ||
-      description.toLowerCase().includes("usability")
-    ) {
-      type = "non-functional";
-    }
-
-    // Extract priority based on keywords
-    let priority: RequirementPriority = "medium"; // Type annotation to fix error
-    if (
-      description.toLowerCase().includes("critical") ||
-      description.toLowerCase().includes("highest priority") ||
-      description.toLowerCase().includes("must have")
-    ) {
-      priority = "critical";
-    } else if (
-      description.toLowerCase().includes("high priority") ||
-      description.toLowerCase().includes("important")
-    ) {
-      priority = "high";
-    } else if (
-      description.toLowerCase().includes("low priority") ||
-      description.toLowerCase().includes("nice to have")
-    ) {
-      priority = "low";
-    }
-
-    // Extract tags from keywords
-    const tagKeywords = [
-      "performance",
-      "security",
-      "usability",
-      "scalability",
-      "reliability",
-      "maintainability",
-      "accessibility",
-      "ui",
-      "database",
-      "api",
-      "authentication",
-      "frontend",
-      "backend",
-    ];
-
-    const tags = tagKeywords.filter((keyword) =>
-      description.toLowerCase().includes(keyword)
+        Only return the array of requirements, nothing else.
+        `,
+        },
+      ],
+      {
+        output: schema,
+      }
     );
 
     return {
+      ...JSON.parse(JSON.stringify(requirements.object)),
       projectId,
-      title,
-      description,
-      type,
-      priority,
-      tags,
+    };
+  }
+
+  private async parseRequirementFromText(
+    projectId: string,
+    description: string
+  ): Promise<RequirementInput> {
+    const schema = z.object({
+      projectId: z.string(),
+      title: z.string(),
+      description: z.string(),
+      type: z.string(),
+      priority: z.string().transform((val) => val as RequirementPriority),
+    });
+
+    const requirement = await requirementGeneratorAgent.generate(
+      [
+        {
+          role: "user",
+          content: `Parse the following text into a requirement, using this as example: 
+[
+      {
+        projectId,
+        title: "Example Requirement 1",
+        description:
+          "This is an example requirement parsed from discovery responses",
+        type: "functional",
+        priority: "high",
+      },
+    ];
+
+    ${description}
+
+        Only return the requirement, nothing else.
+        `,
+        },
+      ],
+      {
+        output: schema,
+      }
+    );
+
+    return {
+      ...JSON.parse(JSON.stringify(requirement.object)),
+      projectId,
     };
   }
 }

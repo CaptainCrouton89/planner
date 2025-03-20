@@ -22,10 +22,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@ai-sdk/openai": "^1.2.6",
+    "@mastra/core": "^0.6.3",
     "@modelcontextprotocol/sdk": "^1.7.0",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.40.1",
     "nanoid": "^5.1.4",
+    "openai": "^4.88.0",
     "pg": "^8.14.1",
     "postgres": "^3.4.5",
     "uuid": "^11.1.0",
