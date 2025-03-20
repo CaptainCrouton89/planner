@@ -4,7 +4,10 @@ import {
   RequirementStatus,
   RequirementType,
 } from "../core/Requirement.js";
-import { createErrorResponse } from "../utils/errorHandling.js";
+import {
+  createErrorResponse,
+  withErrorHandling,
+} from "../utils/errorHandling.js";
 import {
   validateDiscoveryStage,
   validateRequirementPriority,
@@ -13,62 +16,53 @@ import {
 } from "../utils/validation.js";
 
 /**
- * Create a new project
+ * Create a new project (implementation)
  */
-export async function createProject(input: {
+async function createProjectImpl(input: {
   name: string;
   description?: string;
 }) {
-  try {
-    const { name, description } = input;
-    const project = await requirementsApi.createProject(name, description);
-    return {
-      success: true,
-      project,
-    };
-  } catch (error) {
-    console.error("Error creating project:", error);
-    return {
-      success: false,
-      error: (error as Error).message,
-    };
+  const { name, description } = input;
+  const project = await requirementsApi.createProject(name, description);
+  return { project };
+}
+
+/**
+ * Create a new project
+ */
+export const createProject = withErrorHandling(
+  createProjectImpl,
+  "createProject"
+);
+
+/**
+ * Update an existing project (implementation)
+ */
+async function updateProjectImpl(input: {
+  id: string;
+  name?: string;
+  description?: string;
+}) {
+  const { id, name, description } = input;
+  const project = await requirementsApi.updateProject(id, {
+    name,
+    description,
+  });
+
+  if (!project) {
+    return createErrorResponse(`Project with ID ${id} not found`);
   }
+
+  return { project };
 }
 
 /**
  * Update an existing project
  */
-export async function updateProject(input: {
-  id: string;
-  name?: string;
-  description?: string;
-}) {
-  try {
-    const { id, name, description } = input;
-    const project = await requirementsApi.updateProject(id, {
-      name,
-      description,
-    });
-
-    if (!project) {
-      return {
-        success: false,
-        error: `Project with ID ${id} not found`,
-      };
-    }
-
-    return {
-      success: true,
-      project,
-    };
-  } catch (error) {
-    console.error("Error updating project:", error);
-    return {
-      success: false,
-      error: (error as Error).message,
-    };
-  }
-}
+export const updateProject = withErrorHandling(
+  updateProjectImpl,
+  "updateProject"
+);
 
 /**
  * Create a requirement

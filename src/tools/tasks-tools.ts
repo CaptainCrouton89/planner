@@ -151,94 +151,70 @@ export const listProjectTasks = withErrorHandling(
 );
 
 /**
+ * Get root tasks for a project (implementation)
+ */
+async function listProjectRootTasksImpl(input: { projectId: string }) {
+  const { projectId } = input;
+  const tasks = await tasksApi.getProjectRootTasks(projectId);
+  return { tasks };
+}
+
+/**
  * Get root tasks for a project
  */
-export async function listProjectRootTasks(input: { projectId: string }) {
-  try {
-    const { projectId } = input;
-    const tasks = await tasksApi.getProjectRootTasks(projectId);
+export const listProjectRootTasks = withErrorHandling(
+  listProjectRootTasksImpl,
+  "listProjectRootTasks"
+);
 
-    return {
-      success: true,
-      tasks,
-    };
-  } catch (error) {
-    console.error("Error listing project root tasks:", error);
-    return {
-      success: false,
-      error: (error as Error).message,
-    };
-  }
+/**
+ * Get child tasks (implementation)
+ */
+async function listChildTasksImpl(input: { parentId: string }) {
+  const { parentId } = input;
+  const tasks = await tasksApi.getChildTasks(parentId);
+  return { tasks };
 }
 
 /**
  * Get child tasks
  */
-export async function listChildTasks(input: { parentId: string }) {
-  try {
-    const { parentId } = input;
-    const tasks = await tasksApi.getChildTasks(parentId);
+export const listChildTasks = withErrorHandling(
+  listChildTasksImpl,
+  "listChildTasks"
+);
 
-    return {
-      success: true,
-      tasks,
-    };
-  } catch (error) {
-    console.error("Error listing child tasks:", error);
-    return {
-      success: false,
-      error: (error as Error).message,
-    };
+/**
+ * Complete a task (implementation)
+ */
+async function completeTaskImpl(input: { id: string }) {
+  const { id } = input;
+  const task = await tasksApi.completeTask(id);
+
+  if (!task) {
+    return createErrorResponse(`Task with ID ${id} not found`);
   }
+
+  return { task };
 }
 
 /**
  * Complete a task
  */
-export async function completeTask(input: { id: string }) {
-  try {
-    const { id } = input;
-    const task = await tasksApi.completeTask(id);
+export const completeTask = withErrorHandling(completeTaskImpl, "completeTask");
 
-    if (!task) {
-      return {
-        success: false,
-        error: `Task with ID ${id} not found`,
-      };
-    }
-
-    return {
-      success: true,
-      task,
-    };
-  } catch (error) {
-    console.error("Error completing task:", error);
-    return {
-      success: false,
-      error: (error as Error).message,
-    };
-  }
+/**
+ * List all tasks (implementation)
+ */
+async function listAllTasksImpl() {
+  const tasks = await tasksApi.getAllTasks();
+  return { tasks };
 }
 
 /**
  * List all tasks
  */
-export async function listAllTasks() {
-  try {
-    const tasks = await tasksApi.getAllTasks();
-
-    return {
-      success: true,
-      tasks,
-    };
-  } catch (error) {
-    console.error("Error listing all tasks:", error);
-    return {
-      success: false,
-      error: (error as Error).message,
-    };
-  }
-}
+export const listAllTasks = withErrorHandling(listAllTasksImpl, "listAllTasks");
 
 // Helper function for task priority validation that returns an error response if invalid
 function validateTaskPriorityWithResponse(priority: string) {

@@ -1,10 +1,18 @@
+// Export project management tools
+export {
+  createProject,
+  findProjects,
+  getProject,
+  updateProject,
+} from "./project-tools.js";
+
 // Export requirement management tools
 export {
   createRequirement,
   deleteRequirement,
   listProjectRequirements,
   updateRequirement,
-} from "./requirements-tools.js";
+} from "./requirement-tools.js";
 
 // Export task management tools
 export {
@@ -21,13 +29,11 @@ export {
 
 // Export guided discovery tools
 export {
+  generateRequirement,
   generateRequirementsFromDiscovery,
   guidedRequirementDiscovery,
   processDiscoveryResponse,
-} from "./requirements-tools.js";
-
-// Export AI-assisted generation tools
-export { generateRequirement } from "./requirements-tools.js";
+} from "./discovery-tools.js";
 
 // Project management functions are already defined as MCP tools in src/index.ts
 // so we're not exporting them from here to avoid duplication
