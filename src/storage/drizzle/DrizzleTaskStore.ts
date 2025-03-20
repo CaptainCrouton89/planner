@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { nanoid } from "nanoid";
+import { v4 as uuidv4 } from "uuid";
 import {
   TaskInput,
   Task as TaskModel,
@@ -87,7 +87,7 @@ export class DrizzleTaskStore {
 
   async createTask(input: TaskInput): Promise<TaskModel> {
     try {
-      const id = nanoid();
+      const id = uuidv4();
       const now = new Date();
 
       const newTask: NewTask = {

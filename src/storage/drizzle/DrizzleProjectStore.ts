@@ -1,5 +1,5 @@
 import { desc, eq, ilike, or } from "drizzle-orm";
-import { nanoid } from "nanoid";
+import { v4 as uuidv4 } from "uuid";
 import {
   ProjectInput,
   Project as ProjectModel,
@@ -53,7 +53,7 @@ export class DrizzleProjectStore {
 
   async createProject(input: ProjectInput): Promise<ProjectModel> {
     try {
-      const id = nanoid();
+      const id = uuidv4();
       const now = new Date();
 
       const newProject: NewProject = {
