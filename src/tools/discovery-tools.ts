@@ -1,9 +1,25 @@
 import * as requirementsApi from "../api/requirements.js";
+import { DiscoveryStage } from "../core/Requirement.js";
 import {
   createErrorResponse,
   withErrorHandling,
 } from "../utils/errorHandling.js";
 import { validateDiscoveryStage } from "../utils/validation.js";
+
+// Type representing an error response from createErrorResponse
+type ErrorResponseType = ReturnType<typeof createErrorResponse>;
+
+/**
+ * Type guard to check if a value is an error response
+ */
+function isErrorResponse(value: any): value is ErrorResponseType {
+  return (
+    value &&
+    typeof value === "object" &&
+    "success" in value &&
+    value.success === false
+  );
+}
 
 /**
  * Guide the user through structured requirement discovery (implementation)
@@ -17,15 +33,15 @@ async function guidedRequirementDiscoveryImpl(input: {
   const { projectId, domain, stage, previousResponses } = input;
 
   // Validate stage
-  const validatedStage = validateDiscoveryStageWithResponse(stage);
-  if (typeof validatedStage === "object") {
-    return validatedStage; // Return error response
+  const stageResult = validateDiscoveryStageWithResponse(stage);
+  if (isErrorResponse(stageResult)) {
+    return stageResult;
   }
 
   const response = await requirementsApi.guidedRequirementDiscovery({
     projectId,
     domain,
-    stage: validatedStage,
+    stage: stageResult,
     previousResponses,
   });
 
@@ -59,14 +75,14 @@ async function processDiscoveryResponseImpl(input: {
   } = input;
 
   // Validate stage
-  const validatedStage = validateDiscoveryStageWithResponse(stage);
-  if (typeof validatedStage === "object") {
-    return validatedStage; // Return error response
+  const stageResult = validateDiscoveryStageWithResponse(stage);
+  if (isErrorResponse(stageResult)) {
+    return stageResult;
   }
 
   const result = await requirementsApi.processDiscoveryResponse({
     projectId,
-    stage: validatedStage,
+    stage: stageResult,
     domain,
     response: userResponse,
     previousResponses,
@@ -134,7 +150,9 @@ export const generateRequirement = withErrorHandling(
 );
 
 // Helper function for validating discovery stage
-function validateDiscoveryStageWithResponse(stage: string) {
+function validateDiscoveryStageWithResponse(
+  stage: string
+): DiscoveryStage | ErrorResponseType {
   const validatedStage = validateDiscoveryStage(stage);
   if (!validatedStage) {
     return createErrorResponse(

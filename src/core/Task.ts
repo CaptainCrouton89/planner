@@ -1,3 +1,5 @@
+export type TaskPriority = "low" | "medium" | "high";
+
 export interface Task {
   id: string;
   title: string;
@@ -8,7 +10,7 @@ export interface Task {
   childTasks: string[];
   createdAt: Date;
   updatedAt: Date;
-  priority?: "low" | "medium" | "high";
+  priority?: TaskPriority;
   position?: number;
 }
 
@@ -17,14 +19,14 @@ export interface TaskInput {
   description?: string;
   parentId?: string;
   projectId: string;
-  priority?: "low" | "medium" | "high";
+  priority?: TaskPriority;
 }
 
 export interface UpdateTaskInput {
   title?: string;
   description?: string;
   completed?: boolean;
-  priority?: "low" | "medium" | "high";
+  priority?: TaskPriority;
   position?: number;
   projectId?: string;
 }

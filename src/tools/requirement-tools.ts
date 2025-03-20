@@ -14,6 +14,21 @@ import {
   validateRequirementType,
 } from "../utils/validation.js";
 
+// Type representing an error response from createErrorResponse
+type ErrorResponseType = ReturnType<typeof createErrorResponse>;
+
+/**
+ * Type guard to check if a value is an error response
+ */
+function isErrorResponse(value: any): value is ErrorResponseType {
+  return (
+    value &&
+    typeof value === "object" &&
+    "success" in value &&
+    value.success === false
+  );
+}
+
 /**
  * Create a requirement (implementation)
  */
@@ -28,30 +43,30 @@ async function createRequirementImpl(input: {
   const { projectId, title, description, type, priority, status } = input;
 
   // Validate type
-  const validatedType = validateRequirementTypeWithResponse(type);
-  if (typeof validatedType === "object") {
-    return validatedType; // Return error response
+  const typeResult = validateRequirementTypeWithResponse(type);
+  if (isErrorResponse(typeResult)) {
+    return typeResult;
   }
 
   // Validate priority
-  const validatedPriority = validateRequirementPriorityWithResponse(priority);
-  if (typeof validatedPriority === "object") {
-    return validatedPriority; // Return error response
+  const priorityResult = validateRequirementPriorityWithResponse(priority);
+  if (isErrorResponse(priorityResult)) {
+    return priorityResult;
   }
 
   // Validate status
-  const validatedStatus = validateRequirementStatusWithResponse(status);
-  if (typeof validatedStatus === "object") {
-    return validatedStatus; // Return error response
+  const statusResult = validateRequirementStatusWithResponse(status);
+  if (isErrorResponse(statusResult)) {
+    return statusResult;
   }
 
   const requirement = await requirementsApi.createRequirement({
     projectId,
     title,
     description,
-    type: validatedType,
-    priority: validatedPriority,
-    status: validatedStatus,
+    type: typeResult,
+    priority: priorityResult,
+    status: statusResult,
   });
 
   return { requirement };
@@ -82,32 +97,31 @@ async function updateRequirementImpl(input: {
   // Validate type if provided
   let validatedType: RequirementType | undefined;
   if (type) {
-    const typeValidation = validateRequirementTypeWithResponse(type);
-    if (typeof typeValidation === "object") {
-      return typeValidation; // Return error response
+    const typeResult = validateRequirementTypeWithResponse(type);
+    if (isErrorResponse(typeResult)) {
+      return typeResult;
     }
-    validatedType = typeValidation;
+    validatedType = typeResult;
   }
 
   // Validate priority if provided
   let validatedPriority: RequirementPriority | undefined;
   if (priority) {
-    const priorityValidation =
-      validateRequirementPriorityWithResponse(priority);
-    if (typeof priorityValidation === "object") {
-      return priorityValidation; // Return error response
+    const priorityResult = validateRequirementPriorityWithResponse(priority);
+    if (isErrorResponse(priorityResult)) {
+      return priorityResult;
     }
-    validatedPriority = priorityValidation;
+    validatedPriority = priorityResult;
   }
 
   // Validate status if provided
   let validatedStatus: RequirementStatus | undefined;
   if (status) {
-    const statusValidation = validateRequirementStatusWithResponse(status);
-    if (typeof statusValidation === "object") {
-      return statusValidation; // Return error response
+    const statusResult = validateRequirementStatusWithResponse(status);
+    if (isErrorResponse(statusResult)) {
+      return statusResult;
     }
-    validatedStatus = statusValidation;
+    validatedStatus = statusResult;
   }
 
   const requirement = await requirementsApi.updateRequirement(id, {
@@ -173,7 +187,9 @@ export const listProjectRequirements = withErrorHandling(
 );
 
 // Helper functions for validation with error responses
-function validateRequirementTypeWithResponse(type: string) {
+function validateRequirementTypeWithResponse(
+  type: string
+): RequirementType | ReturnType<typeof createErrorResponse> {
   const validatedType = validateRequirementType(type);
   if (!validatedType) {
     return createErrorResponse(
@@ -183,7 +199,9 @@ function validateRequirementTypeWithResponse(type: string) {
   return validatedType;
 }
 
-function validateRequirementPriorityWithResponse(priority: string) {
+function validateRequirementPriorityWithResponse(
+  priority: string
+): RequirementPriority | ReturnType<typeof createErrorResponse> {
   const validatedPriority = validateRequirementPriority(priority);
   if (!validatedPriority) {
     return createErrorResponse(
@@ -193,7 +211,9 @@ function validateRequirementPriorityWithResponse(priority: string) {
   return validatedPriority;
 }
 
-function validateRequirementStatusWithResponse(status: string) {
+function validateRequirementStatusWithResponse(
+  status: string
+): RequirementStatus | ReturnType<typeof createErrorResponse> {
   const validatedStatus = validateRequirementStatus(status);
   if (!validatedStatus) {
     return createErrorResponse(

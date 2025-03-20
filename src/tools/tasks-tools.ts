@@ -1,10 +1,25 @@
 import * as tasksApi from "../api/tasks.js";
-import { TaskInput, UpdateTaskInput } from "../core/Task.js";
+import { TaskInput, TaskPriority, UpdateTaskInput } from "../core/Task.js";
 import {
   createErrorResponse,
   withErrorHandling,
 } from "../utils/errorHandling.js";
 import { validateTaskPriority } from "../utils/validation.js";
+
+// Type representing an error response from createErrorResponse
+type ErrorResponseType = ReturnType<typeof createErrorResponse>;
+
+/**
+ * Type guard to check if a value is an error response
+ */
+function isErrorResponse(value: any): value is ErrorResponseType {
+  return (
+    value &&
+    typeof value === "object" &&
+    "success" in value &&
+    value.success === false
+  );
+}
 
 /**
  * Create a new task (implementation)
@@ -19,7 +34,7 @@ async function createTaskImpl(input: {
   const { title, description, parentId, projectId, priority } = input;
 
   // Validate priority if provided
-  let validatedPriority: "low" | "medium" | "high" | undefined;
+  let validatedPriority: TaskPriority | undefined;
   if (priority) {
     validatedPriority = validateTaskPriority(priority);
     if (!validatedPriority) {
@@ -62,7 +77,7 @@ async function updateTaskImpl(input: {
     input;
 
   // Validate priority if provided
-  let validatedPriority: "low" | "medium" | "high" | undefined;
+  let validatedPriority: TaskPriority | undefined;
   if (priority) {
     validatedPriority = validateTaskPriority(priority);
     if (!validatedPriority) {
@@ -217,7 +232,9 @@ async function listAllTasksImpl() {
 export const listAllTasks = withErrorHandling(listAllTasksImpl, "listAllTasks");
 
 // Helper function for task priority validation that returns an error response if invalid
-function validateTaskPriorityWithResponse(priority: string) {
+function validateTaskPriorityWithResponse(
+  priority: string
+): TaskPriority | ErrorResponseType {
   const validatedPriority = validateTaskPriority(priority);
   if (!validatedPriority) {
     return createErrorResponse(

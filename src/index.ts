@@ -4,19 +4,23 @@ import "dotenv/config"; // Load environment variables
 import { z } from "zod";
 import * as requirementsApi from "./api/requirements.js";
 import {
-  createProject,
-  createRequirement,
-  deleteRequirement,
-  findProjects,
   generateRequirement,
   generateRequirementsFromDiscovery,
-  getProject,
   guidedRequirementDiscovery,
-  listProjectRequirements,
   processDiscoveryResponse,
+} from "./tools/discovery-tools.js";
+import {
+  createProject,
+  findProjects,
+  getProject,
   updateProject,
+} from "./tools/project-tools.js";
+import {
+  createRequirement,
+  deleteRequirement,
+  listProjectRequirements,
   updateRequirement,
-} from "./tools/requirements-tools.js";
+} from "./tools/requirement-tools.js";
 import {
   completeTask,
   createTask,
