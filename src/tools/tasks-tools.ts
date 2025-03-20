@@ -1,58 +1,55 @@
 import * as tasksApi from "../api/tasks.js";
 import { TaskInput, UpdateTaskInput } from "../core/Task.js";
+import {
+  createErrorResponse,
+  withErrorHandling,
+} from "../utils/errorHandling.js";
+import { validateTaskPriority } from "../utils/validation.js";
 
 /**
- * Create a new task
+ * Create a new task (implementation)
  */
-export async function createTask(input: {
+async function createTaskImpl(input: {
   title: string;
   description?: string;
   parentId?: string;
   projectId: string;
   priority?: string;
 }) {
-  try {
-    const { title, description, parentId, projectId, priority } = input;
+  const { title, description, parentId, projectId, priority } = input;
 
-    // Validate priority if provided
-    let validatedPriority: "low" | "medium" | "high" | undefined;
-    if (priority) {
-      validatedPriority = validateTaskPriority(priority);
-      if (!validatedPriority) {
-        return {
-          success: false,
-          error: `Invalid task priority: ${priority}. Valid priorities are: low, medium, high`,
-        };
-      }
+  // Validate priority if provided
+  let validatedPriority: "low" | "medium" | "high" | undefined;
+  if (priority) {
+    validatedPriority = validateTaskPriority(priority);
+    if (!validatedPriority) {
+      return createErrorResponse(
+        `Invalid task priority: ${priority}. Valid priorities are: low, medium, high`
+      );
     }
-
-    const taskInput: TaskInput = {
-      title,
-      description,
-      parentId,
-      projectId,
-      priority: validatedPriority,
-    };
-
-    const task = await tasksApi.createTask(taskInput);
-
-    return {
-      success: true,
-      task,
-    };
-  } catch (error) {
-    console.error("Error creating task:", error);
-    return {
-      success: false,
-      error: (error as Error).message,
-    };
   }
+
+  const taskInput: TaskInput = {
+    title,
+    description,
+    parentId,
+    projectId,
+    priority: validatedPriority,
+  };
+
+  const task = await tasksApi.createTask(taskInput);
+  return { task };
 }
 
 /**
- * Update an existing task
+ * Create a new task
  */
-export async function updateTask(input: {
+export const createTask = withErrorHandling(createTaskImpl, "createTask");
+
+/**
+ * Update a task (implementation)
+ */
+async function updateTaskImpl(input: {
   id: string;
   title?: string;
   description?: string;
@@ -61,128 +58,97 @@ export async function updateTask(input: {
   position?: number;
   projectId?: string;
 }) {
-  try {
-    const { id, title, description, completed, priority, position, projectId } =
-      input;
+  const { id, title, description, completed, priority, position, projectId } =
+    input;
 
-    // Validate priority if provided
-    let validatedPriority: "low" | "medium" | "high" | undefined;
-    if (priority) {
-      validatedPriority = validateTaskPriority(priority);
-      if (!validatedPriority) {
-        return {
-          success: false,
-          error: `Invalid task priority: ${priority}. Valid priorities are: low, medium, high`,
-        };
-      }
+  // Validate priority if provided
+  let validatedPriority: "low" | "medium" | "high" | undefined;
+  if (priority) {
+    validatedPriority = validateTaskPriority(priority);
+    if (!validatedPriority) {
+      return createErrorResponse(
+        `Invalid task priority: ${priority}. Valid priorities are: low, medium, high`
+      );
     }
-
-    const updateInput: UpdateTaskInput = {
-      title,
-      description,
-      completed,
-      priority: validatedPriority,
-      position,
-      projectId,
-    };
-
-    const task = await tasksApi.updateTask(id, updateInput);
-
-    if (!task) {
-      return {
-        success: false,
-        error: `Task with ID ${id} not found`,
-      };
-    }
-
-    return {
-      success: true,
-      task,
-    };
-  } catch (error) {
-    console.error("Error updating task:", error);
-    return {
-      success: false,
-      error: (error as Error).message,
-    };
   }
+
+  const updateInput: UpdateTaskInput = {
+    title,
+    description,
+    completed,
+    priority: validatedPriority,
+    position,
+    projectId,
+  };
+
+  const task = await tasksApi.updateTask(id, updateInput);
+
+  if (!task) {
+    return createErrorResponse(`Task with ID ${id} not found`);
+  }
+
+  return { task };
+}
+
+/**
+ * Update an existing task
+ */
+export const updateTask = withErrorHandling(updateTaskImpl, "updateTask");
+
+/**
+ * Delete a task (implementation)
+ */
+async function deleteTaskImpl(input: { id: string }) {
+  const { id } = input;
+  const success = await tasksApi.deleteTask(id);
+
+  if (!success) {
+    return createErrorResponse(`Task with ID ${id} not found`);
+  }
+
+  return {};
 }
 
 /**
  * Delete a task
  */
-export async function deleteTask(input: { id: string }) {
-  try {
-    const { id } = input;
-    const success = await tasksApi.deleteTask(id);
+export const deleteTask = withErrorHandling(deleteTaskImpl, "deleteTask");
 
-    if (!success) {
-      return {
-        success: false,
-        error: `Task with ID ${id} not found`,
-      };
-    }
+/**
+ * Get task by ID (implementation)
+ */
+async function getTaskImpl(input: { id: string }) {
+  const { id } = input;
+  const task = await tasksApi.getTaskById(id);
 
-    return {
-      success: true,
-    };
-  } catch (error) {
-    console.error("Error deleting task:", error);
-    return {
-      success: false,
-      error: (error as Error).message,
-    };
+  if (!task) {
+    return createErrorResponse(`Task with ID ${id} not found`);
   }
+
+  return { task };
 }
 
 /**
  * Get task by ID
  */
-export async function getTask(input: { id: string }) {
-  try {
-    const { id } = input;
-    const task = await tasksApi.getTaskById(id);
+export const getTask = withErrorHandling(getTaskImpl, "getTask");
 
-    if (!task) {
-      return {
-        success: false,
-        error: `Task with ID ${id} not found`,
-      };
-    }
-
-    return {
-      success: true,
-      task,
-    };
-  } catch (error) {
-    console.error("Error getting task:", error);
-    return {
-      success: false,
-      error: (error as Error).message,
-    };
-  }
+/**
+ * Get tasks for a project (implementation)
+ */
+async function listProjectTasksImpl(input: { projectId: string }) {
+  const { projectId } = input;
+  const tasks = await tasksApi.getTasksByProject(projectId);
+  return { tasks };
 }
 
 /**
  * Get tasks for a project
  */
-export async function listProjectTasks(input: { projectId: string }) {
-  try {
-    const { projectId } = input;
-    const tasks = await tasksApi.getTasksByProject(projectId);
-
-    return {
-      success: true,
-      tasks,
-    };
-  } catch (error) {
-    console.error("Error listing project tasks:", error);
-    return {
-      success: false,
-      error: (error as Error).message,
-    };
-  }
-}
+export const listProjectTasks = withErrorHandling(
+  listProjectTasksImpl,
+  "listProjectTasks"
+);
 
 /**
  * Get root tasks for a project
@@ -274,15 +240,13 @@ export async function listAllTasks() {
   }
 }
 
-// Helper functions for validation
-
-function validateTaskPriority(
-  priority: string
-): "low" | "medium" | "high" | undefined {
-  const validPriorities = ["low", "medium", "high"];
-
-  const normalizedPriority = priority.toLowerCase();
-  return validPriorities.includes(normalizedPriority)
-    ? (normalizedPriority as "low" | "medium" | "high")
-    : undefined;
+// Helper function for task priority validation that returns an error response if invalid
+function validateTaskPriorityWithResponse(priority: string) {
+  const validatedPriority = validateTaskPriority(priority);
+  if (!validatedPriority) {
+    return createErrorResponse(
+      `Invalid task priority: ${priority}. Valid priorities are: low, medium, high`
+    );
+  }
+  return validatedPriority;
 }

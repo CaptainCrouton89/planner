@@ -1,10 +1,16 @@
 import * as requirementsApi from "../api/requirements.js";
 import {
-  DiscoveryStage,
   RequirementPriority,
   RequirementStatus,
   RequirementType,
 } from "../core/Requirement.js";
+import { createErrorResponse } from "../utils/errorHandling.js";
+import {
+  validateDiscoveryStage,
+  validateRequirementPriority,
+  validateRequirementStatus,
+  validateRequirementType,
+} from "../utils/validation.js";
 
 /**
  * Create a new project
@@ -79,30 +85,21 @@ export async function createRequirement(input: {
     const { projectId, title, description, type, priority, status } = input;
 
     // Validate type
-    const validatedType = validateRequirementType(type);
-    if (!validatedType) {
-      return {
-        success: false,
-        error: `Invalid requirement type: ${type}. Valid types are: functional, technical, non-functional, user_story`,
-      };
+    const validatedType = validateRequirementTypeWithResponse(type);
+    if (typeof validatedType === "object") {
+      return validatedType; // Return error response
     }
 
     // Validate priority
-    const validatedPriority = validateRequirementPriority(priority);
-    if (!validatedPriority) {
-      return {
-        success: false,
-        error: `Invalid requirement priority: ${priority}. Valid priorities are: low, medium, high`,
-      };
+    const validatedPriority = validateRequirementPriorityWithResponse(priority);
+    if (typeof validatedPriority === "object") {
+      return validatedPriority; // Return error response
     }
 
     // Validate status
-    const validatedStatus = validateRequirementStatus(status);
-    if (!validatedStatus) {
-      return {
-        success: false,
-        error: `Invalid requirement status: ${status}. Valid statuses are: draft, approved, implemented`,
-      };
+    const validatedStatus = validateRequirementStatusWithResponse(status);
+    if (typeof validatedStatus === "object") {
+      return validatedStatus; // Return error response
     }
     const requirement = await requirementsApi.createRequirement({
       projectId,
@@ -144,37 +141,32 @@ export async function updateRequirement(input: {
     // Validate type if provided
     let validatedType: RequirementType | undefined;
     if (type) {
-      validatedType = validateRequirementType(type);
-      if (!validatedType) {
-        return {
-          success: false,
-          error: `Invalid requirement type: ${type}. Valid types are: functional, technical, non-functional, user_story`,
-        };
+      const typeValidation = validateRequirementTypeWithResponse(type);
+      if (typeof typeValidation === "object") {
+        return typeValidation; // Return error response
       }
+      validatedType = typeValidation;
     }
 
     // Validate priority if provided
     let validatedPriority: RequirementPriority | undefined;
     if (priority) {
-      validatedPriority = validateRequirementPriority(priority);
-      if (!validatedPriority) {
-        return {
-          success: false,
-          error: `Invalid requirement priority: ${priority}. Valid priorities are: low, medium, high`,
-        };
+      const priorityValidation =
+        validateRequirementPriorityWithResponse(priority);
+      if (typeof priorityValidation === "object") {
+        return priorityValidation; // Return error response
       }
+      validatedPriority = priorityValidation;
     }
 
     // Validate status if provided
     let validatedStatus: RequirementStatus | undefined;
     if (status) {
-      validatedStatus = validateRequirementStatus(status);
-      if (!validatedStatus) {
-        return {
-          success: false,
-          error: `Invalid requirement status: ${status}. Valid statuses are: draft, approved, implemented`,
-        };
+      const statusValidation = validateRequirementStatusWithResponse(status);
+      if (typeof statusValidation === "object") {
+        return statusValidation; // Return error response
       }
+      validatedStatus = statusValidation;
     }
 
     const requirement = await requirementsApi.updateRequirement(id, {
@@ -268,12 +260,9 @@ export async function guidedRequirementDiscovery(input: {
     const { projectId, domain, stage, previousResponses } = input;
 
     // Validate stage
-    const validatedStage = validateDiscoveryStage(stage);
-    if (!validatedStage) {
-      return {
-        success: false,
-        error: `Invalid discovery stage: ${stage}. Valid stages are: initial, stakeholders, features, constraints, quality, finalize`,
-      };
+    const validatedStage = validateDiscoveryStageWithResponse(stage);
+    if (typeof validatedStage === "object") {
+      return validatedStage; // Return error response
     }
 
     const response = await requirementsApi.guidedRequirementDiscovery({
@@ -316,12 +305,9 @@ export async function processDiscoveryResponse(input: {
     } = input;
 
     // Validate stage
-    const validatedStage = validateDiscoveryStage(stage);
-    if (!validatedStage) {
-      return {
-        success: false,
-        error: `Invalid discovery stage: ${stage}. Valid stages are: initial, stakeholders, features, constraints, quality, finalize`,
-      };
+    const validatedStage = validateDiscoveryStageWithResponse(stage);
+    if (typeof validatedStage === "object") {
+      return validatedStage; // Return error response
     }
 
     const result = await requirementsApi.processDiscoveryResponse({
@@ -451,56 +437,43 @@ export async function getProject(input: { id: string }) {
   }
 }
 
-// Helper functions for validation
-
-function validateRequirementType(type: string): RequirementType | undefined {
-  const validTypes: RequirementType[] = [
-    "functional",
-    "technical",
-    "non-functional",
-    "user_story",
-  ];
-
-  const normalizedType = type.toLowerCase() as RequirementType;
-  return validTypes.includes(normalizedType) ? normalizedType : undefined;
+// Helper functions for validation with error responses
+function validateRequirementTypeWithResponse(type: string) {
+  const validatedType = validateRequirementType(type);
+  if (!validatedType) {
+    return createErrorResponse(
+      `Invalid requirement type: ${type}. Valid types are: functional, technical, non-functional, user_story`
+    );
+  }
+  return validatedType;
 }
 
-function validateRequirementPriority(
-  priority: string
-): RequirementPriority | undefined {
-  const validPriorities: RequirementPriority[] = ["low", "medium", "high"];
-
-  const normalizedPriority = priority.toLowerCase() as RequirementPriority;
-  return validPriorities.includes(normalizedPriority)
-    ? normalizedPriority
-    : undefined;
+function validateRequirementPriorityWithResponse(priority: string) {
+  const validatedPriority = validateRequirementPriority(priority);
+  if (!validatedPriority) {
+    return createErrorResponse(
+      `Invalid requirement priority: ${priority}. Valid priorities are: low, medium, high`
+    );
+  }
+  return validatedPriority;
 }
 
-function validateRequirementStatus(
-  status: string
-): RequirementStatus | undefined {
-  const validStatuses: RequirementStatus[] = [
-    "draft",
-    "approved",
-    "implemented",
-  ];
-
-  const normalizedStatus = status.toLowerCase() as RequirementStatus;
-  return validStatuses.includes(normalizedStatus)
-    ? normalizedStatus
-    : undefined;
+function validateRequirementStatusWithResponse(status: string) {
+  const validatedStatus = validateRequirementStatus(status);
+  if (!validatedStatus) {
+    return createErrorResponse(
+      `Invalid requirement status: ${status}. Valid statuses are: draft, approved, implemented`
+    );
+  }
+  return validatedStatus;
 }
 
-function validateDiscoveryStage(stage: string): DiscoveryStage | undefined {
-  const validStages: DiscoveryStage[] = [
-    "initial",
-    "stakeholders",
-    "features",
-    "constraints",
-    "quality",
-    "finalize",
-  ];
-
-  const normalizedStage = stage.toLowerCase() as DiscoveryStage;
-  return validStages.includes(normalizedStage) ? normalizedStage : undefined;
+function validateDiscoveryStageWithResponse(stage: string) {
+  const validatedStage = validateDiscoveryStage(stage);
+  if (!validatedStage) {
+    return createErrorResponse(
+      `Invalid discovery stage: ${stage}. Valid stages are: initial, stakeholders, features, constraints, quality, finalize`
+    );
+  }
+  return validatedStage;
 }

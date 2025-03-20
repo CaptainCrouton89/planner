@@ -252,18 +252,39 @@ export class DrizzleTaskStore {
       const parentIds = tasksList.map((task) => task.id).filter(Boolean);
 
       if (parentIds.length > 0) {
-        const childTasks = await db
-          .select()
-          .from(tasks)
-          .where(sql`${tasks.parentId} IN (${parentIds.join(",")})`);
+        // For a single parent, use simple equality
+        if (parentIds.length === 1) {
+          const childTasks = await db
+            .select()
+            .from(tasks)
+            .where(sql`${tasks.parentId} = ${parentIds[0]}`);
 
-        // Group children by parent ID
-        for (const child of childTasks) {
-          if (child.parentId) {
-            if (!childMap[child.parentId]) {
-              childMap[child.parentId] = [];
+          // Group children by parent ID
+          for (const child of childTasks) {
+            if (child.parentId) {
+              if (!childMap[child.parentId]) {
+                childMap[child.parentId] = [];
+              }
+              childMap[child.parentId].push(child.id);
             }
-            childMap[child.parentId].push(child.id);
+          }
+        } else {
+          // For multiple parents, use multiple separate queries
+          // This is not as efficient but avoids compatibility issues
+          for (const parentId of parentIds) {
+            const childTasks = await db
+              .select()
+              .from(tasks)
+              .where(sql`${tasks.parentId} = ${parentId}`);
+
+            for (const child of childTasks) {
+              if (child.parentId) {
+                if (!childMap[child.parentId]) {
+                  childMap[child.parentId] = [];
+                }
+                childMap[child.parentId].push(child.id);
+              }
+            }
           }
         }
       }
