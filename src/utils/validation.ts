@@ -4,6 +4,8 @@ import {
   RequirementStatus,
   RequirementType,
 } from "../core/Requirement.js";
+import { TechnicalRequirementStatus } from "../core/TechnicalRequirement.js";
+import { createErrorResponse } from "./errorHandling.js";
 
 export type TaskPriority = "low" | "medium" | "high";
 
@@ -88,4 +90,55 @@ export function validateTaskPriority(
 ): TaskPriority | undefined {
   const validPriorities: TaskPriority[] = ["low", "medium", "high"];
   return validateEnumValue<TaskPriority>(priority, validPriorities);
+}
+
+// Type representing an error response from createErrorResponse
+type ErrorResponseType = ReturnType<typeof createErrorResponse>;
+
+/**
+ * Type guard to check if a value is an error response
+ */
+export function isErrorResponse(value: any): value is ErrorResponseType {
+  return (
+    value &&
+    typeof value === "object" &&
+    "success" in value &&
+    value.success === false
+  );
+}
+
+// Helper function for validating requirement type
+export function validateRequirementTypeWithResponse(
+  type: string
+): RequirementType | ErrorResponseType {
+  const validatedType = validateRequirementType(type);
+  if (!validatedType) {
+    return createErrorResponse(
+      `Invalid requirement type: ${type}. Valid types are: functional, technical, non-functional, user_story`
+    );
+  }
+  return validatedType;
+}
+
+// Helper function for validating technical requirement status
+export function validateTechnicalRequirementStatusWithResponse(
+  status: string
+): TechnicalRequirementStatus | ErrorResponseType {
+  const validStatuses: TechnicalRequirementStatus[] = [
+    "unassigned",
+    "assigned",
+    "in_progress",
+    "review",
+    "completed",
+  ];
+
+  if (!validStatuses.includes(status as TechnicalRequirementStatus)) {
+    return createErrorResponse(
+      `Invalid technical requirement status: ${status}. Valid statuses are: ${validStatuses.join(
+        ", "
+      )}`
+    );
+  }
+
+  return status as TechnicalRequirementStatus;
 }

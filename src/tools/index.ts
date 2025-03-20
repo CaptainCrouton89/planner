@@ -1,3 +1,9 @@
+import { RequirementGenerator } from "../core/RequirementGenerator.js";
+import { DrizzleProjectStore } from "../storage/drizzle/DrizzleProjectStore.js";
+import { DrizzleRequirementStore } from "../storage/drizzle/DrizzleRequirementStore.js";
+import { DrizzleTaskStore } from "../storage/drizzle/DrizzleTaskStore.js";
+import { DrizzleTechnicalRequirementStore } from "../storage/drizzle/DrizzleTechnicalRequirementStore.js";
+
 // Export project management tools
 export {
   createProject,
@@ -47,3 +53,24 @@ export {
 
 // Project management functions are already defined as MCP tools in src/index.ts
 // so we're not exporting them from here to avoid duplication
+
+// Initialize stores and services
+export const projectStore = new DrizzleProjectStore();
+export const requirementStore = new DrizzleRequirementStore();
+export const technicalRequirementStore = new DrizzleTechnicalRequirementStore();
+export const requirementGenerator = new RequirementGenerator();
+export const taskStore = new DrizzleTaskStore();
+
+// Initialize all stores
+async function initialize() {
+  await projectStore.initialize();
+  await requirementStore.initialize();
+  await technicalRequirementStore.initialize();
+  await requirementGenerator.initialize();
+  await taskStore.initialize();
+}
+
+// Initialize on module load
+initialize().catch((error) => {
+  console.error("Failed to initialize requirement API:", error);
+});

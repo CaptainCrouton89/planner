@@ -1,4 +1,3 @@
-import * as requirementsApi from "../api/requirements.js";
 import { DiscoveryStage } from "../core/Requirement.js";
 import { TechnicalRequirement } from "../core/TechnicalRequirement.js";
 import {
@@ -6,6 +5,7 @@ import {
   withErrorHandling,
 } from "../utils/errorHandling.js";
 import { validateDiscoveryStage } from "../utils/validation.js";
+import { requirementGenerator } from "./index.js";
 
 // Type representing an error response from createErrorResponse
 type ErrorResponseType = ReturnType<typeof createErrorResponse>;
@@ -23,173 +23,135 @@ function isErrorResponse(value: any): value is ErrorResponseType {
 }
 
 /**
- * Guide the user through structured requirement discovery (implementation)
- */
-async function guidedRequirementDiscoveryImpl(input: {
-  projectId: string;
-  domain: string;
-  stage: string;
-  previousResponses?: string;
-}) {
-  const { projectId, domain, stage, previousResponses } = input;
-
-  // Validate stage
-  const stageResult = validateDiscoveryStageWithResponse(stage);
-  if (isErrorResponse(stageResult)) {
-    return stageResult;
-  }
-
-  const response = await requirementsApi.guidedRequirementDiscovery({
-    projectId,
-    domain,
-    stage: stageResult,
-    previousResponses,
-  });
-
-  return { response };
-}
-
-/**
  * Guide the user through structured requirement discovery
  */
 export const guidedRequirementDiscovery = withErrorHandling(
-  guidedRequirementDiscoveryImpl,
+  async ({
+    projectId,
+    domain,
+    stage,
+    previousResponses,
+  }: {
+    projectId: string;
+    domain: string;
+    stage: string;
+    previousResponses?: string;
+  }) => {
+    // Validate stage
+    const stageResult = validateDiscoveryStageWithResponse(stage);
+    if (isErrorResponse(stageResult)) {
+      return stageResult;
+    }
+
+    const response = await requirementGenerator.guidedRequirementDiscovery({
+      projectId,
+      domain,
+      stage: stageResult,
+      previousResponses,
+    });
+
+    return { response };
+  },
   "guidedRequirementDiscovery"
 );
-
-/**
- * Process the user's response to guided discovery (implementation)
- */
-async function processDiscoveryResponseImpl(input: {
-  projectId: string;
-  stage: string;
-  domain: string;
-  response: string;
-  previousResponses?: string;
-}) {
-  const {
-    projectId,
-    stage,
-    domain,
-    response: userResponse,
-    previousResponses,
-  } = input;
-
-  // Validate stage
-  const stageResult = validateDiscoveryStageWithResponse(stage);
-  if (isErrorResponse(stageResult)) {
-    return stageResult;
-  }
-
-  const result = await requirementsApi.processDiscoveryResponse({
-    projectId,
-    stage: stageResult,
-    domain,
-    response: userResponse,
-    previousResponses,
-  });
-
-  return { response: result };
-}
 
 /**
  * Process the user's response to guided discovery
  */
 export const processDiscoveryResponse = withErrorHandling(
-  processDiscoveryResponseImpl,
+  async (input: {
+    projectId: string;
+    stage: string;
+    domain: string;
+    response: string;
+    previousResponses?: string;
+  }) => {
+    const {
+      projectId,
+      stage,
+      domain,
+      response: userResponse,
+      previousResponses,
+    } = input;
+
+    // Validate stage
+    const stageResult = validateDiscoveryStageWithResponse(stage);
+    if (isErrorResponse(stageResult)) {
+      return stageResult;
+    }
+
+    const result = await requirementGenerator.processDiscoveryResponse({
+      projectId,
+      stage: stageResult,
+      domain,
+      response: userResponse,
+      previousResponses,
+    });
+
+    return { response: result };
+  },
   "processDiscoveryResponse"
 );
-
-/**
- * Generate requirements from discovery responses (implementation)
- */
-async function generateRequirementsFromDiscoveryImpl(input: {
-  projectId: string;
-  discoveryResponses: string;
-  generateTechnical?: boolean;
-}) {
-  const { projectId, discoveryResponses, generateTechnical = false } = input;
-
-  const requirements = await requirementsApi.generateRequirementsFromDiscovery(
-    projectId,
-    discoveryResponses,
-    generateTechnical
-  );
-
-  return { requirements };
-}
 
 /**
  * Generate requirements from discovery responses
  */
 export const generateRequirementsFromDiscovery = withErrorHandling(
-  generateRequirementsFromDiscoveryImpl,
+  async (input: { projectId: string; discoveryResponses: string }) => {
+    const { projectId, discoveryResponses } = input;
+
+    const requirements =
+      await requirementGenerator.generateRequirementsFromDiscovery(
+        projectId,
+        discoveryResponses
+      );
+
+    return { requirements };
+  },
   "generateRequirementsFromDiscovery"
 );
-
-/**
- * Generate a requirement from natural language (implementation)
- */
-async function generateRequirementImpl(input: {
-  projectId: string;
-  description: string;
-}) {
-  const { projectId, description } = input;
-
-  const requirement = await requirementsApi.generateRequirement(
-    projectId,
-    description
-  );
-
-  return { requirement };
-}
 
 /**
  * Generate a requirement from natural language
  */
 export const generateRequirement = withErrorHandling(
-  generateRequirementImpl,
+  async (input: { projectId: string; description: string }) => {
+    const { projectId, description } = input;
+
+    const requirement = await requirementGenerator.generateRequirement(
+      projectId,
+      description
+    );
+
+    return { requirement };
+  },
   "generateRequirement"
 );
-
-/**
- * Generate requirements and technical requirements from discovery responses (implementation)
- */
-async function generateAllRequirementsFromDiscoveryImpl(input: {
-  projectId: string;
-  discoveryResponses: string;
-  includeTechnicalRequirements?: boolean;
-}) {
-  const {
-    projectId,
-    discoveryResponses,
-    includeTechnicalRequirements = true,
-  } = input;
-
-  // First generate regular requirements
-  const requirements = await requirementsApi.generateRequirementsFromDiscovery(
-    projectId,
-    discoveryResponses
-  );
-
-  // If technical requirements are requested, generate them too
-  let technicalRequirements: TechnicalRequirement[] = [];
-  if (includeTechnicalRequirements) {
-    technicalRequirements =
-      await requirementsApi.generateTechnicalRequirementsFromDiscovery(
-        projectId,
-        discoveryResponses
-      );
-  }
-
-  return { requirements, technicalRequirements };
-}
 
 /**
  * Generate requirements and technical requirements from discovery responses
  */
 export const generateAllRequirementsFromDiscovery = withErrorHandling(
-  generateAllRequirementsFromDiscoveryImpl,
+  async (input: { projectId: string; discoveryResponses: string }) => {
+    const { projectId, discoveryResponses } = input;
+
+    // First generate regular requirements
+    const requirements =
+      await requirementGenerator.generateRequirementsFromDiscovery(
+        projectId,
+        discoveryResponses
+      );
+
+    // If technical requirements are requested, generate them too
+    let technicalRequirements: TechnicalRequirement[] = [];
+    technicalRequirements =
+      await requirementGenerator.generateTechnicalRequirementsFromDiscovery(
+        projectId,
+        discoveryResponses
+      );
+
+    return { requirements, technicalRequirements };
+  },
   "generateAllRequirementsFromDiscovery"
 );
 

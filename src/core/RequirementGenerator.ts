@@ -159,8 +159,7 @@ export class RequirementGenerator {
    */
   async generateRequirementsFromDiscovery(
     projectId: string,
-    discoveryResponses: string,
-    generateTechnical = false
+    discoveryResponses: string
   ): Promise<Requirement[]> {
     try {
       // Get all sessions for this project
@@ -185,8 +184,20 @@ export class RequirementGenerator {
           : JSON.stringify(allResponses);
 
       // Parse the combined responses and generate requirements
-      const requirements: RequirementInput[] =
-        await this.parseRequirementsFromText(projectId, combinedResponses);
+      const functionalRequirements = this.parseFunctionalRequirementsFromText(
+        projectId,
+        combinedResponses
+      );
+
+      const technicalRequirements = this.parseTechnicalRequirementsFromText(
+        projectId,
+        combinedResponses
+      );
+
+      const requirements: RequirementInput[] = [
+        ...(await functionalRequirements),
+        ...(await technicalRequirements),
+      ];
 
       // Create the requirements in the database
       const createdRequirements: Requirement[] = [];
@@ -196,7 +207,7 @@ export class RequirementGenerator {
         createdRequirements.push(requirement);
 
         // If requested and this is a technical requirement, generate a technical requirement too
-        if (generateTechnical && req.type === "technical") {
+        if (req.type === "technical") {
           await this.generateTechnicalRequirement(requirement.id);
         }
       }
@@ -254,12 +265,12 @@ export class RequirementGenerator {
       }
 
       // Generate technical stack
-      const technicalStack = await this.generateTechnicalStack(
+      const technicalStack = this.generateTechnicalStack(
         requirement.description
       );
 
       // Generate acceptance criteria
-      const acceptanceCriteria = await this.generateAcceptanceCriteria(
+      const acceptanceCriteria = this.generateAcceptanceCriteria(
         requirement.description
       );
 
@@ -269,8 +280,8 @@ export class RequirementGenerator {
         title: requirement.title,
         description: requirement.description,
         type: requirement.type,
-        technicalStack,
-        acceptanceCriteria,
+        technicalStack: await technicalStack,
+        acceptanceCriteria: await acceptanceCriteria,
       };
 
       return this.technicalRequirementStore.createTechnicalRequirement(
@@ -555,7 +566,7 @@ export class RequirementGenerator {
     return stages[currentIndex + 1];
   }
 
-  private async parseRequirementsFromText(
+  private async parseFunctionalRequirementsFromText(
     projectId: string,
     text: string
   ): Promise<RequirementInput[]> {
@@ -574,13 +585,13 @@ export class RequirementGenerator {
         {
           role: "user",
           content: `
-        Parse the following text into requirements, using this as example:
+        Turn the following text into functional requirements, using this as example:
 [
       {
         projectId,
         title: "Example Requirement 1",
         description:
-          "This is an example requirement parsed from discovery responses",
+          "A detailed description of the requirement",
         type: "functional",
         priority: "high",
       },
@@ -588,15 +599,86 @@ export class RequirementGenerator {
         projectId,
         title: "Example Requirement 2",
         description:
-          "This is another example requirement parsed from discovery responses",
-        type: "technical",
+          "A detailed description of the requirement",
+        type: "functional",
         priority: "medium",
       },
     ];
 
     ${text}
 
-        Only return the array of requirements, nothing else.
+    # Instructions
+    - Turn the text into functional requirements
+    - Keep them short, precise, and detailed.
+
+        Only return the JSON array of requirements, nothing else.
+        `,
+        },
+      ],
+      {
+        output: schema,
+      }
+    );
+
+    return {
+      ...JSON.parse(JSON.stringify(requirements.object)),
+      projectId,
+    };
+  }
+
+  private async parseTechnicalRequirementsFromText(
+    projectId: string,
+    text: string
+  ): Promise<RequirementInput[]> {
+    const schema = z.array(
+      z.object({
+        projectId: z.string(),
+        title: z.string(),
+        description: z.string(),
+        type: z.string(),
+        priority: z.string().transform((val) => val as RequirementPriority),
+      })
+    );
+
+    const requirements = await requirementGeneratorAgent.generate(
+      [
+        {
+          role: "user",
+          content: `
+        Turn the following text into technical requirements, using this as example:
+[
+      {
+        projectId,
+        title: "Frontend Application",
+        description:
+          "A frontend application to serve the website",
+        type: "technical",
+        priority: "high",
+      },
+      {
+        projectId,
+        title: "Image Storage",
+        description:
+          "A bucket to store images uploaded by the users",
+        type: "technical",
+        priority: "medium",
+      },
+      {
+        projectId,
+        title: "Crypto Payment Processing",
+        description:
+          "A service to handle crypto payments",
+        type: "technical",
+        priority: "high",
+    ];
+
+    ${text}
+
+    # Instructions
+    - Turn the text into technical requirements
+    - Precise, detailed, and concise.
+
+        Only return the JSON array of requirements, nothing else.
         `,
         },
       ],
