@@ -1,12 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import "dotenv/config"; // Load environment variables
 import { z } from "zod";
-import { FileProjectStore } from "./storage/FileProjectStore.js";
-import { FileTaskStore } from "./storage/FileTaskStore.js";
+import { DrizzleProjectStore } from "./storage/drizzle/DrizzleProjectStore.js";
+import { DrizzleTaskStore } from "./storage/drizzle/DrizzleTaskStore.js";
 
 // Initialize the stores
-const taskStore = new FileTaskStore();
-const projectStore = new FileProjectStore();
+const taskStore = new DrizzleTaskStore();
+const projectStore = new DrizzleProjectStore();
 
 // Create an MCP server
 const server = new McpServer({

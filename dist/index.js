@@ -1,13 +1,53 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import "dotenv/config"; // Load environment variables
 import { z } from "zod";
-import { FileTaskStore } from "./storage/FileTaskStore.js";
-// Initialize the task store
-const taskStore = new FileTaskStore();
+import { DrizzleProjectStore } from "./storage/drizzle/DrizzleProjectStore.js";
+import { DrizzleTaskStore } from "./storage/drizzle/DrizzleTaskStore.js";
+// Initialize the stores
+const taskStore = new DrizzleTaskStore();
+const projectStore = new DrizzleProjectStore();
 // Create an MCP server
 const server = new McpServer({
     name: "Task Planner",
     version: "1.0.0",
+});
+// Tool: Create a new project
+server.tool("create-project", "Create a new project", {
+    name: z.string().min(1).describe("Name of the project"),
+    description: z
+        .string()
+        .optional()
+        .describe("Detailed description of the project"),
+}, async ({ name, description }) => {
+    const project = await projectStore.createProject({
+        name,
+        description,
+    });
+    return {
+        content: [
+            {
+                type: "text",
+                text: `Created project: ${project.name} (ID: ${project.id})`,
+            },
+        ],
+    };
+});
+// Tool: List all projects
+server.tool("list-projects", "List all projects", {}, async () => {
+    const projects = await projectStore.getAllProjects();
+    return {
+        content: [
+            {
+                type: "text",
+                text: projects.length > 0
+                    ? `Projects:\n${projects
+                        .map((p) => `- ${p.name} (ID: ${p.id})`)
+                        .join("\n")}`
+                    : "No projects found.",
+            },
+        ],
+    };
 });
 // Tool: Create a new task
 server.tool("create-task", "Create a new task or subtask", {
@@ -20,22 +60,37 @@ server.tool("create-task", "Create a new task or subtask", {
         .string()
         .optional()
         .describe("ID of the parent task if this is a subtask"),
+    projectId: z.string().describe("ID of the project this task belongs to"),
     priority: z
         .enum(["low", "medium", "high"])
         .optional()
         .describe("Priority level of the task"),
-}, async ({ title, description, parentId, priority }) => {
+}, async ({ title, description, parentId, projectId, priority }) => {
+    // Verify the project exists
+    const project = await projectStore.getProjectById(projectId);
+    if (!project) {
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: `Project with ID ${projectId} not found.`,
+                },
+            ],
+            isError: true,
+        };
+    }
     const task = await taskStore.createTask({
         title,
         description,
         parentId,
+        projectId,
         priority,
     });
     return {
         content: [
             {
                 type: "text",
-                text: `Created task: ${task.title} (ID: ${task.id})`,
+                text: `Created task: ${task.title} (ID: ${task.id}) in project: ${project.name}`,
             },
         ],
     };
@@ -46,13 +101,29 @@ server.tool("list-tasks", "List all tasks or subtasks", {
         .string()
         .optional()
         .describe("ID of the parent task to list subtasks for"),
-}, async ({ parentId }) => {
+    projectId: z.string().describe("ID of the project to list tasks for"),
+}, async ({ parentId, projectId }) => {
     let tasks;
+    // Check if project exists
+    const project = await projectStore.getProjectById(projectId);
+    if (!project) {
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: `Project with ID ${projectId} not found.`,
+                },
+            ],
+            isError: true,
+        };
+    }
     if (parentId) {
-        tasks = await taskStore.getChildTasks(parentId);
+        // Get child tasks of a parent within a project
+        tasks = (await taskStore.getChildTasks(parentId)).filter((task) => task.projectId === projectId);
     }
     else {
-        tasks = await taskStore.getRootTasks();
+        // Get root tasks for a project
+        tasks = await taskStore.getProjectRootTasks(projectId);
     }
     const formatTask = (task) => {
         const status = task.completed ? "✓" : "□";
@@ -68,8 +139,10 @@ server.tool("list-tasks", "List all tasks or subtasks", {
             {
                 type: "text",
                 text: tasks.length > 0
-                    ? `Tasks:\n${tasks.map(formatTask).join("\n")}`
-                    : "No tasks found.",
+                    ? `Tasks in project "${project.name}":\n${tasks
+                        .map(formatTask)
+                        .join("\n")}`
+                    : `No tasks found in project "${project.name}".`,
             },
         ],
     };
@@ -235,6 +308,7 @@ server.tool("break-down-task", "Break down a complex task into multiple subtasks
         const created = await taskStore.createTask({
             ...subtask,
             parentId: parentTask.id,
+            projectId: parentTask.projectId,
         });
         createdSubtasks.push(created);
     }
@@ -250,10 +324,29 @@ server.tool("break-down-task", "Break down a complex task into multiple subtasks
         ],
     };
 });
+// Tool: Search for projects
+server.tool("search-projects", "Search for projects by name or description", {
+    query: z.string().min(1).describe("Search term to find matching projects"),
+}, async ({ query }) => {
+    const projects = await projectStore.searchProjects(query);
+    return {
+        content: [
+            {
+                type: "text",
+                text: projects.length > 0
+                    ? `Found ${projects.length} projects matching "${query}":\n${projects
+                        .map((p) => `- ${p.name} (ID: ${p.id})${p.description ? `\n  ${p.description}` : ""}`)
+                        .join("\n")}`
+                    : `No projects found matching "${query}".`,
+            },
+        ],
+    };
+});
 // Initialize storage and start the server
 async function startServer() {
     try {
         await taskStore.initialize();
+        await projectStore.initialize();
         const transport = new StdioServerTransport();
         await server.connect(transport);
         console.error("Task Planner MCP Server running on stdio...");
