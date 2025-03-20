@@ -19,7 +19,7 @@ export const createTechnicalRequirement = withErrorHandling(
     description: string;
     type: string;
     technicalStack: string;
-    status?: string;
+    status: string;
     acceptanceCriteria?: { description: string }[];
   }) => {
     const {
@@ -38,26 +38,9 @@ export const createTechnicalRequirement = withErrorHandling(
       return typeResult;
     }
 
-    // Validate status if provided
-    if (status) {
-      const statusResult =
-        validateTechnicalRequirementStatusWithResponse(status);
-      if (isErrorResponse(statusResult)) {
-        return statusResult;
-      }
-
-      const technicalRequirement =
-        await technicalRequirementStore.createTechnicalRequirement({
-          projectId,
-          title,
-          description,
-          type: typeResult,
-          technicalStack,
-          status: statusResult,
-          acceptanceCriteria,
-        });
-
-      return { technicalRequirement };
+    const statusResult = validateTechnicalRequirementStatusWithResponse(status);
+    if (isErrorResponse(statusResult)) {
+      return statusResult;
     }
 
     const technicalRequirement =
@@ -67,6 +50,7 @@ export const createTechnicalRequirement = withErrorHandling(
         description,
         type: typeResult,
         technicalStack,
+        status: statusResult,
         acceptanceCriteria,
       });
 

@@ -8,8 +8,26 @@ import { projectStore } from "./index.js";
 /**
  * Create a new project
  */
-export const createProject = withErrorHandling(
-  async ({ name, description }: { name: string; description?: string }) => {
+export const upsertProject = withErrorHandling(
+  async ({
+    id,
+    name,
+    description,
+  }: {
+    id?: string;
+    name: string;
+    description?: string;
+  }) => {
+    if (id) {
+      const project = await projectStore.updateProject(id, {
+        name,
+        description,
+      });
+      if (!project) {
+        return createErrorResponse(`Project with ID ${id} not found`);
+      }
+      return { project };
+    }
     const project = await projectStore.createProject({ name, description });
 
     if (!project) {
@@ -19,33 +37,6 @@ export const createProject = withErrorHandling(
     return { project };
   },
   "createProject"
-);
-
-/**
- * Update an existing project
- */
-export const updateProject = withErrorHandling(
-  async ({
-    id,
-    name,
-    description,
-  }: {
-    id: string;
-    name?: string;
-    description?: string;
-  }) => {
-    const project = await projectStore.updateProject(id, {
-      name,
-      description,
-    });
-
-    if (!project) {
-      return createErrorResponse(`Project with ID ${id} not found`);
-    }
-
-    return { project };
-  },
-  "updateProject"
 );
 
 /**

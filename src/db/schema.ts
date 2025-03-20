@@ -162,6 +162,14 @@ export const functionalRequirementDependencies = pgTable(
   }
 );
 
+export const specs = pgTable("specs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Types for use in the application
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
