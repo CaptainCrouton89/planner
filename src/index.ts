@@ -18,7 +18,7 @@ const server = new McpServer({
 // Tool: Create a new project
 server.tool(
   "create-project",
-  "Create a new project",
+  "Create a new project to organize tasks",
   {
     name: z.string().min(1).describe("Name of the project"),
     description: z
@@ -36,6 +36,60 @@ server.tool(
         {
           type: "text",
           text: `Created project: ${project.name} (ID: ${project.id})`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: Delete a project
+server.tool(
+  "delete-project",
+  "Delete a project and all its tasks",
+  {
+    id: z.string().describe("ID of the project to delete"),
+  },
+  async ({ id }) => {
+    // First check if the project exists
+    const project = await projectStore.getProjectById(id);
+    if (!project) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Project with ID ${id} not found.`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // Delete all tasks associated with this project
+    const projectTasks = await taskStore.getTasksByProject(id);
+    for (const task of projectTasks) {
+      await taskStore.deleteTask(task.id);
+    }
+
+    // Delete the project
+    const success = await projectStore.deleteProject(id);
+
+    if (!success) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Failed to delete project ${project.name}.`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Deleted project "${project.name}" and all its ${projectTasks.length} tasks.`,
         },
       ],
     };
@@ -64,13 +118,13 @@ server.tool("list-projects", "List all projects", {}, async () => {
 // Tool: Create a new task
 server.tool(
   "create-task",
-  "Create a new task or subtask",
+  "Create a new task or subtask to organize your work",
   {
     title: z.string().min(1).describe("Title of the task"),
     description: z
       .string()
       .optional()
-      .describe("Detailed description of the task"),
+      .describe("Detailed description of the task, using specifics"),
     parentId: z
       .string()
       .optional()
