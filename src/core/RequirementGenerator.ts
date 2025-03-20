@@ -2,8 +2,13 @@ import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { db, discoverySessions, NewDiscoverySession } from "../db/index.js";
-import { requirementGeneratorAgent } from "../mastra/agents/index.js";
+import {
+  acceptanceCriteriaGeneratorAgent,
+  requirementGeneratorAgent,
+  technicalRequirementsGeneratorAgent,
+} from "../mastra/agents/index.js";
 import { DrizzleRequirementStore } from "../storage/drizzle/DrizzleRequirementStore.js";
+import { DrizzleTechnicalRequirementStore } from "../storage/drizzle/DrizzleTechnicalRequirementStore.js";
 import {
   DiscoveryInput,
   DiscoveryProcessInput,
@@ -14,16 +19,24 @@ import {
   RequirementInput,
   RequirementPriority,
 } from "./Requirement.js";
+import {
+  AcceptanceCriteriaInput,
+  TechnicalRequirement,
+  TechnicalRequirementInput,
+} from "./TechnicalRequirement.js";
 
 export class RequirementGenerator {
   private requirementStore: DrizzleRequirementStore;
+  private technicalRequirementStore: DrizzleTechnicalRequirementStore;
 
   constructor() {
     this.requirementStore = new DrizzleRequirementStore();
+    this.technicalRequirementStore = new DrizzleTechnicalRequirementStore();
   }
 
   async initialize(): Promise<void> {
     await this.requirementStore.initialize();
+    await this.technicalRequirementStore.initialize();
   }
 
   /**
@@ -146,7 +159,8 @@ export class RequirementGenerator {
    */
   async generateRequirementsFromDiscovery(
     projectId: string,
-    discoveryResponses: string
+    discoveryResponses: string,
+    generateTechnical = false
   ): Promise<Requirement[]> {
     try {
       // Get all sessions for this project
@@ -180,6 +194,11 @@ export class RequirementGenerator {
       for (const req of requirements) {
         const requirement = await this.requirementStore.createRequirement(req);
         createdRequirements.push(requirement);
+
+        // If requested and this is a technical requirement, generate a technical requirement too
+        if (generateTechnical && req.type === "technical") {
+          await this.generateTechnicalRequirement(requirement.id);
+        }
       }
 
       return createdRequirements;
@@ -207,6 +226,162 @@ export class RequirementGenerator {
       return this.requirementStore.createRequirement(requirementInput);
     } catch (error) {
       console.error("Error in generateRequirement:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generates a technical requirement from a regular requirement
+   */
+  async generateTechnicalRequirement(
+    requirementId: string
+  ): Promise<TechnicalRequirement | undefined> {
+    try {
+      // Get the original requirement
+      const requirement = await this.requirementStore.getRequirementById(
+        requirementId
+      );
+
+      if (!requirement) {
+        throw new Error(`Requirement with ID ${requirementId} not found`);
+      }
+
+      // Ensure the requirement type is 'technical'
+      if (requirement.type !== "technical") {
+        throw new Error(
+          `Requirement with ID ${requirementId} is not of type 'technical'`
+        );
+      }
+
+      // Generate technical stack
+      const technicalStack = await this.generateTechnicalStack(
+        requirement.description
+      );
+
+      // Generate acceptance criteria
+      const acceptanceCriteria = await this.generateAcceptanceCriteria(
+        requirement.description
+      );
+
+      // Create the technical requirement
+      const technicalRequirementInput: TechnicalRequirementInput = {
+        projectId: requirement.projectId,
+        title: requirement.title,
+        description: requirement.description,
+        type: requirement.type,
+        technicalStack,
+        acceptanceCriteria,
+      };
+
+      return this.technicalRequirementStore.createTechnicalRequirement(
+        technicalRequirementInput
+      );
+    } catch (error) {
+      console.error("Error in generateTechnicalRequirement:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate technical requirements from discovery responses
+   */
+  async generateTechnicalRequirementsFromDiscovery(
+    projectId: string,
+    discoveryResponses: string
+  ): Promise<TechnicalRequirement[]> {
+    try {
+      // Generate regular requirements first
+      const regularRequirements = await this.generateRequirementsFromDiscovery(
+        projectId,
+        discoveryResponses
+      );
+
+      // Filter for technical requirements
+      const technicalRequirementIds = regularRequirements
+        .filter((req) => req.type === "technical")
+        .map((req) => req.id);
+
+      // Generate technical requirements for each technical requirement
+      const technicalRequirements: TechnicalRequirement[] = [];
+
+      for (const reqId of technicalRequirementIds) {
+        const technicalReq = await this.generateTechnicalRequirement(reqId);
+        if (technicalReq) {
+          technicalRequirements.push(technicalReq);
+        }
+      }
+
+      return technicalRequirements;
+    } catch (error) {
+      console.error(
+        "Error in generateTechnicalRequirementsFromDiscovery:",
+        error
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Generate a technical requirement directly from description
+   */
+  async generateDirectTechnicalRequirement(
+    projectId: string,
+    description: string
+  ): Promise<TechnicalRequirement> {
+    try {
+      // Parse the natural language description into a structured technical requirement
+      const schema = z.object({
+        title: z.string(),
+        description: z.string(),
+        type: z.string().transform((val) => val as "technical"),
+        technicalStack: z.string(),
+      });
+
+      const technicalReqBase =
+        await technicalRequirementsGeneratorAgent.generate(
+          [
+            {
+              role: "user",
+              content: `
+            Generate a technical requirement from the following description. Include a title, detailed description, and technical stack.
+            
+            Description: ${description}
+            
+            Return valid JSON with the following structure:
+            {
+              "title": "Requirement title",
+              "description": "Detailed description",
+              "type": "technical",
+              "technicalStack": "List of technologies (e.g., Node.js, PostgreSQL, React)"
+            }
+            `,
+            },
+          ],
+          {
+            output: schema,
+          }
+        );
+
+      // Generate acceptance criteria
+      const acceptanceCriteria = await this.generateAcceptanceCriteria(
+        description
+      );
+
+      // Create the technical requirement
+      const technicalRequirementInput: TechnicalRequirementInput = {
+        projectId,
+        title: technicalReqBase.object.title,
+        description: technicalReqBase.object.description,
+        type: "technical",
+        technicalStack: technicalReqBase.object.technicalStack,
+        acceptanceCriteria,
+      };
+
+      return this.technicalRequirementStore.createTechnicalRequirement(
+        technicalRequirementInput
+      );
+    } catch (error) {
+      console.error("Error in generateDirectTechnicalRequirement:", error);
       throw error;
     }
   }
@@ -293,6 +468,7 @@ export class RequirementGenerator {
         content: `
         Generate suggestions for the ${stage} stage of the discovery process.
         The domain is ${domain}.
+        Keep it short and concise.
       `,
       },
     ]);
@@ -314,6 +490,8 @@ export class RequirementGenerator {
         The domain is ${domain}.
         The previous responses are ${previousResponses}.
         The response is ${response}.
+
+        Keep it short and concise.
         `,
       },
     ]);
@@ -476,5 +654,73 @@ export class RequirementGenerator {
       ...JSON.parse(JSON.stringify(requirement.object)),
       projectId,
     };
+  }
+
+  private async generateTechnicalStack(description: string): Promise<string> {
+    const schema = z.object({
+      technicalStack: z.string(),
+    });
+
+    const stack = await technicalRequirementsGeneratorAgent.generate(
+      [
+        {
+          role: "user",
+          content: `
+          Based on the following requirement description, suggest an appropriate technical stack.
+          List the technologies, frameworks, libraries, and tools that would be needed.
+          
+          Requirement: ${description}
+          
+          Return valid JSON with only the following structure:
+          {
+            "technicalStack": "List of technologies (e.g., Node.js, PostgreSQL, React)"
+          }
+          `,
+        },
+      ],
+      {
+        output: schema,
+      }
+    );
+
+    return stack.object.technicalStack;
+  }
+
+  private async generateAcceptanceCriteria(
+    description: string
+  ): Promise<AcceptanceCriteriaInput[]> {
+    const schema = z.array(
+      z.object({
+        description: z.string(),
+      })
+    );
+
+    const criteria = await acceptanceCriteriaGeneratorAgent.generate(
+      [
+        {
+          role: "user",
+          content: `
+          Generate acceptance criteria for the following requirement:
+          
+          ${description}
+          
+          Return valid JSON as an array of criteria with the following structure:
+          [
+            {
+              "description": "Criteria 1 description"
+            },
+            {
+              "description": "Criteria 2 description"
+            }
+          ]
+          `,
+        },
+      ],
+      {
+        output: schema,
+      }
+    );
+
+    return criteria.object;
   }
 }

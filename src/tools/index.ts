@@ -29,11 +29,21 @@ export {
 
 // Export guided discovery tools
 export {
+  generateAllRequirementsFromDiscovery,
   generateRequirement,
   generateRequirementsFromDiscovery,
   guidedRequirementDiscovery,
   processDiscoveryResponse,
 } from "./discovery-tools.js";
+
+// Export technical requirement tools
+export {
+  createTechnicalRequirement,
+  generateDirectTechnicalRequirement,
+  generateTechnicalRequirement,
+  generateTechnicalRequirementsFromDiscovery,
+  listProjectTechnicalRequirements,
+} from "./technical-requirement-tools.js";
 
 // Project management functions are already defined as MCP tools in src/index.ts
 // so we're not exporting them from here to avoid duplication

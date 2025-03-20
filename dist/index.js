@@ -3,7 +3,9 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import "dotenv/config"; // Load environment variables
 import { z } from "zod";
 import * as requirementsApi from "./api/requirements.js";
-import { createProject, createRequirement, deleteRequirement, findProjects, generateRequirement, generateRequirementsFromDiscovery, getProject, guidedRequirementDiscovery, listProjectRequirements, processDiscoveryResponse, updateProject, updateRequirement, } from "./tools/requirements-tools.js";
+import { generateRequirement, generateRequirementsFromDiscovery, guidedRequirementDiscovery, processDiscoveryResponse, } from "./tools/discovery-tools.js";
+import { createProject, findProjects, getProject, updateProject, } from "./tools/project-tools.js";
+import { createRequirement, deleteRequirement, listProjectRequirements, updateRequirement, } from "./tools/requirement-tools.js";
 import { completeTask, createTask, deleteTask, getTask, listChildTasks, listProjectRootTasks, listProjectTasks, updateTask, } from "./tools/tasks-tools.js";
 // Create an MCP server
 const server = new McpServer({

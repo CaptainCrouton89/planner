@@ -1,5 +1,6 @@
 import * as requirementsApi from "../api/requirements.js";
 import { DiscoveryStage } from "../core/Requirement.js";
+import { TechnicalRequirement } from "../core/TechnicalRequirement.js";
 import {
   createErrorResponse,
   withErrorHandling,
@@ -105,12 +106,14 @@ export const processDiscoveryResponse = withErrorHandling(
 async function generateRequirementsFromDiscoveryImpl(input: {
   projectId: string;
   discoveryResponses: string;
+  generateTechnical?: boolean;
 }) {
-  const { projectId, discoveryResponses } = input;
+  const { projectId, discoveryResponses, generateTechnical = false } = input;
 
   const requirements = await requirementsApi.generateRequirementsFromDiscovery(
     projectId,
-    discoveryResponses
+    discoveryResponses,
+    generateTechnical
   );
 
   return { requirements };
@@ -147,6 +150,47 @@ async function generateRequirementImpl(input: {
 export const generateRequirement = withErrorHandling(
   generateRequirementImpl,
   "generateRequirement"
+);
+
+/**
+ * Generate requirements and technical requirements from discovery responses (implementation)
+ */
+async function generateAllRequirementsFromDiscoveryImpl(input: {
+  projectId: string;
+  discoveryResponses: string;
+  includeTechnicalRequirements?: boolean;
+}) {
+  const {
+    projectId,
+    discoveryResponses,
+    includeTechnicalRequirements = true,
+  } = input;
+
+  // First generate regular requirements
+  const requirements = await requirementsApi.generateRequirementsFromDiscovery(
+    projectId,
+    discoveryResponses
+  );
+
+  // If technical requirements are requested, generate them too
+  let technicalRequirements: TechnicalRequirement[] = [];
+  if (includeTechnicalRequirements) {
+    technicalRequirements =
+      await requirementsApi.generateTechnicalRequirementsFromDiscovery(
+        projectId,
+        discoveryResponses
+      );
+  }
+
+  return { requirements, technicalRequirements };
+}
+
+/**
+ * Generate requirements and technical requirements from discovery responses
+ */
+export const generateAllRequirementsFromDiscovery = withErrorHandling(
+  generateAllRequirementsFromDiscoveryImpl,
+  "generateAllRequirementsFromDiscovery"
 );
 
 // Helper function for validating discovery stage
