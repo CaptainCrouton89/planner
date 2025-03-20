@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import {
   boolean,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -38,26 +39,78 @@ export const tasks = pgTable("tasks", {
   position: integer("position"),
 });
 
-// Define relationships
+// Requirement type and status enums
+export const requirementTypeEnum = pgEnum("requirement_type", [
+  "functional",
+  "technical",
+  "non-functional",
+  "user_story",
+]);
+
+export const requirementStatusEnum = pgEnum("requirement_status", [
+  "draft",
+  "proposed",
+  "approved",
+  "rejected",
+  "implemented",
+  "verified",
+]);
+
+// Requirements table
+export const requirements = pgTable("requirements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  type: requirementTypeEnum("type").notNull(),
+  priority: priorityEnum("priority").notNull(),
+  status: requirementStatusEnum("status").default("draft").notNull(),
+  tags: jsonb("tags").$type<string[]>().default([]),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// Requirements relations
+export const requirementsRelations = relations(requirements, ({ one }) => ({
+  project: one(projects, {
+    fields: [requirements.projectId],
+    references: [projects.id],
+  }),
+}));
+
+// Additional relation for projects to requirements
 export const projectsRelations = relations(projects, ({ many }) => ({
   tasks: many(tasks),
   technicalRequirements: many(technicalRequirements),
   functionalRequirements: many(functionalRequirements),
+  requirements: many(requirements),
 }));
 
-export const tasksRelations = relations(tasks, ({ one, many }) => ({
-  project: one(projects, {
-    fields: [tasks.projectId],
-    references: [projects.id],
-  }),
-  parent: one(tasks, {
-    fields: [tasks.parentId],
-    references: [tasks.id],
-  }),
-  children: many(tasks, {
-    relationName: "parent_child",
-  }),
-}));
+// Discovery sessions table
+export const discoverySessions = pgTable("discovery_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  domain: text("domain").notNull(),
+  stage: text("stage").notNull(),
+  responses: jsonb("responses").$type<Record<string, string>>().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// Discovery sessions relations
+export const discoverySessionsRelations = relations(
+  discoverySessions,
+  ({ one }) => ({
+    project: one(projects, {
+      fields: [discoverySessions.projectId],
+      references: [projects.id],
+    }),
+  })
+);
 
 // Enums
 export const statusEnum = pgEnum("status", [
@@ -66,20 +119,6 @@ export const statusEnum = pgEnum("status", [
   "in_progress",
   "review",
   "completed",
-]);
-export const requirementTypeEnum = pgEnum("requirement_type", [
-  // Technical Requirement Types
-  "foundation",
-  "backend",
-  "frontend",
-  "database",
-  "integration",
-  // Functional Requirement Types
-  "core",
-  "enhancement",
-  "security",
-  "reporting",
-  "user_interface",
 ]);
 
 // Technical Requirements Table
@@ -308,6 +347,10 @@ export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
 export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
+export type Requirement = typeof requirements.$inferSelect;
+export type NewRequirement = typeof requirements.$inferInsert;
+export type DiscoverySession = typeof discoverySessions.$inferSelect;
+export type NewDiscoverySession = typeof discoverySessions.$inferInsert;
 export type TechnicalRequirement = typeof technicalRequirements.$inferSelect;
 export type NewTechnicalRequirement = typeof technicalRequirements.$inferInsert;
 export type FunctionalRequirement = typeof functionalRequirements.$inferSelect;
