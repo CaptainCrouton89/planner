@@ -1,4 +1,3 @@
-import { relations } from "drizzle-orm";
 import {
   boolean,
   integer,
@@ -72,22 +71,6 @@ export const requirements = pgTable("requirements", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
-// Requirements relations
-export const requirementsRelations = relations(requirements, ({ one }) => ({
-  project: one(projects, {
-    fields: [requirements.projectId],
-    references: [projects.id],
-  }),
-}));
-
-// Additional relation for projects to requirements
-export const projectsRelations = relations(projects, ({ many }) => ({
-  tasks: many(tasks),
-  technicalRequirements: many(technicalRequirements),
-  functionalRequirements: many(functionalRequirements),
-  requirements: many(requirements),
-}));
-
 // Discovery sessions table
 export const discoverySessions = pgTable("discovery_sessions", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -100,17 +83,6 @@ export const discoverySessions = pgTable("discovery_sessions", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
-
-// Discovery sessions relations
-export const discoverySessionsRelations = relations(
-  discoverySessions,
-  ({ one }) => ({
-    project: one(projects, {
-      fields: [discoverySessions.projectId],
-      references: [projects.id],
-    }),
-  })
-);
 
 // Enums
 export const statusEnum = pgEnum("status", [
@@ -137,25 +109,6 @@ export const technicalRequirements = pgTable("technical_requirements", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Technical Requirements Relations
-export const technicalRequirementsRelations = relations(
-  technicalRequirements,
-  ({ one, many }) => ({
-    project: one(projects, {
-      fields: [technicalRequirements.projectId],
-      references: [projects.id],
-    }),
-    dependencies: many(technicalRequirementDependencies, {
-      relationName: "dependent",
-    }),
-    dependentOn: many(technicalRequirementDependencies, {
-      relationName: "dependency",
-    }),
-    acceptanceCriteria: many(acceptanceCriteria),
-    tags: many(technicalRequirementTags),
-  })
-);
-
 // Technical Requirement Dependencies (many-to-many)
 export const technicalRequirementDependencies = pgTable(
   "technical_requirement_dependencies",
@@ -169,24 +122,6 @@ export const technicalRequirementDependencies = pgTable(
       .references(() => technicalRequirements.id, { onDelete: "cascade" }),
   }
 );
-
-// Technical Requirement Dependencies Relations
-export const technicalRequirementDependenciesRelations = relations(
-  technicalRequirementDependencies,
-  ({ one }) => ({
-    dependent: one(technicalRequirements, {
-      fields: [technicalRequirementDependencies.dependentId],
-      references: [technicalRequirements.id],
-      relationName: "dependent",
-    }),
-    dependency: one(technicalRequirements, {
-      fields: [technicalRequirementDependencies.dependencyId],
-      references: [technicalRequirements.id],
-      relationName: "dependency",
-    }),
-  })
-);
-
 // Acceptance Criteria Table
 export const acceptanceCriteria = pgTable("acceptance_criteria", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -195,17 +130,6 @@ export const acceptanceCriteria = pgTable("acceptance_criteria", {
     .notNull()
     .references(() => technicalRequirements.id, { onDelete: "cascade" }),
 });
-
-// Acceptance Criteria Relations
-export const acceptanceCriteriaRelations = relations(
-  acceptanceCriteria,
-  ({ one }) => ({
-    technicalRequirement: one(technicalRequirements, {
-      fields: [acceptanceCriteria.technicalRequirementId],
-      references: [technicalRequirements.id],
-    }),
-  })
-);
 
 // Tags for Technical Requirements
 export const tags = pgTable("tags", {
@@ -224,21 +148,6 @@ export const technicalRequirementTags = pgTable("technical_requirement_tags", {
     .references(() => tags.id, { onDelete: "cascade" }),
 });
 
-// Technical Requirement Tags Relations
-export const technicalRequirementTagsRelations = relations(
-  technicalRequirementTags,
-  ({ one }) => ({
-    technicalRequirement: one(technicalRequirements, {
-      fields: [technicalRequirementTags.technicalRequirementId],
-      references: [technicalRequirements.id],
-    }),
-    tag: one(tags, {
-      fields: [technicalRequirementTags.tagId],
-      references: [tags.id],
-    }),
-  })
-);
-
 // Functional Requirements Table
 export const functionalRequirements = pgTable("functional_requirements", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -254,24 +163,6 @@ export const functionalRequirements = pgTable("functional_requirements", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
-
-// Functional Requirements Relations
-export const functionalRequirementsRelations = relations(
-  functionalRequirements,
-  ({ one, many }) => ({
-    project: one(projects, {
-      fields: [functionalRequirements.projectId],
-      references: [projects.id],
-    }),
-    dependencies: many(functionalRequirementDependencies, {
-      relationName: "functional_dependent",
-    }),
-    dependentOn: many(functionalRequirementDependencies, {
-      relationName: "functional_dependency",
-    }),
-    tags: many(functionalRequirementTags),
-  })
-);
 
 // Functional Requirement Dependencies (many-to-many)
 export const functionalRequirementDependencies = pgTable(
@@ -292,27 +183,6 @@ export const functionalRequirementDependencies = pgTable(
   }
 );
 
-// Functional Requirement Dependencies Relations
-export const functionalRequirementDependenciesRelations = relations(
-  functionalRequirementDependencies,
-  ({ one }) => ({
-    dependent: one(functionalRequirements, {
-      fields: [functionalRequirementDependencies.dependentId],
-      references: [functionalRequirements.id],
-      relationName: "functional_dependent",
-    }),
-    dependency: one(functionalRequirements, {
-      fields: [functionalRequirementDependencies.dependencyId],
-      references: [functionalRequirements.id],
-      relationName: "functional_dependency",
-    }),
-    technicalDependency: one(technicalRequirements, {
-      fields: [functionalRequirementDependencies.technicalDependencyId],
-      references: [technicalRequirements.id],
-    }),
-  })
-);
-
 // Functional Requirement Tags (many-to-many)
 export const functionalRequirementTags = pgTable(
   "functional_requirement_tags",
@@ -325,21 +195,6 @@ export const functionalRequirementTags = pgTable(
       .notNull()
       .references(() => tags.id, { onDelete: "cascade" }),
   }
-);
-
-// Functional Requirement Tags Relations
-export const functionalRequirementTagsRelations = relations(
-  functionalRequirementTags,
-  ({ one }) => ({
-    functionalRequirement: one(functionalRequirements, {
-      fields: [functionalRequirementTags.functionalRequirementId],
-      references: [functionalRequirements.id],
-    }),
-    tag: one(tags, {
-      fields: [functionalRequirementTags.tagId],
-      references: [tags.id],
-    }),
-  })
 );
 
 // Types for use in the application
