@@ -412,9 +412,11 @@ Make a plan to do each component. If a component is difficult, break it down int
               type: "text",
               text: `Make the following screen: 
               
-              ${JSON.stringify(nextScreen)}
+${JSON.stringify(nextScreen)}
+
+Use real data from the database, not mock data. Check for an api endpoint or supabase to get the data you need.
               
-              Then save it as completed when done. Then call the get-next-task tool.`,
+Then save it as completed when done. Then call the get-next-task tool.`,
             },
           ],
         };
