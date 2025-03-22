@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import "dotenv/config"; // Load environment variables
+import { registerExecutionTools } from "./execution.js";
 import { registerProjectTools } from "./project.js";
 import { registerTaskTools } from "./task.js";
 // Create an MCP server
@@ -17,6 +18,7 @@ const server = new McpServer(
 
 registerProjectTools(server);
 registerTaskTools(server);
+registerExecutionTools(server);
 
 // Initialize storage and start the server
 async function startServer() {

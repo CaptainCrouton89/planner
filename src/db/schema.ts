@@ -27,6 +27,11 @@ import {
 
 // Define priority enum
 export const priorityEnum = pgEnum("priority", ["low", "medium", "high"]);
+export const statusEnum = pgEnum("status", [
+  "open",
+  "in progress",
+  "completed",
+]);
 
 // Projects table
 export const projects = pgTable("projects", {
@@ -35,7 +40,7 @@ export const projects = pgTable("projects", {
   description: text("description"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-  // stage: text("stage").notNull().default(""),
+  stage: text("stage").notNull().default("requirements"),
 });
 
 export const projectRequirements = pgTable("project_requirements", {
@@ -84,6 +89,7 @@ export const projectOverviews = pgTable("project_overviews", {
   sharedComponents: jsonb("shared_components").notNull(), // e.g. [{ "name": "Button", "description": "A button component" }]
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  status: statusEnum("status").notNull().default("open"),
 });
 
 export const dataModels = pgTable("data_models", {
@@ -97,6 +103,7 @@ export const dataModels = pgTable("data_models", {
   relations: jsonb("relations").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  status: statusEnum("status").notNull().default("open"), // open, in progress, completed
 });
 
 export const apiEndpoints = pgTable("api_endpoints", {
@@ -112,6 +119,7 @@ export const apiEndpoints = pgTable("api_endpoints", {
   responseFormat: text("response_format").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  status: statusEnum("status").notNull().default("open"),
 });
 
 export const screens = pgTable("screens", {
@@ -124,6 +132,7 @@ export const screens = pgTable("screens", {
   description: text("description"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  status: statusEnum("status").notNull().default("open"),
 });
 
 // Types for use in the application
