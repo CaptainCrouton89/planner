@@ -277,14 +277,14 @@ Now propose a tech stack, auth method, and shared components. Work with the user
 Tech stack:
 - Frontend: React
 - Backend: Node.js
-- Database: PostgreSQL
+- Database: PostgreSQL on Supabase
 - Hosting: Vercel
 - Auth: Supabase
 
 Shared components:
-- Card
-- Video player
-- Image carousel
+- Lesson Section: A long description describing exactly what this shared component is
+- Quiz Section: A long description describing exactly what this shared component is
+- Note Section: A long description describing exactly what this shared component is
 
 Once the tech stack, auth method, and shared components are approved, call the "approve-tech-stack" tool with the tech stack, auth method, and shared components.
 `,
@@ -327,7 +327,7 @@ Once the tech stack, auth method, and shared components are approved, call the "
             type: "text",
             text: `Successfully saved tech stack and shared components.
 
-Propose data models for the project. Work with the user to refine the data models until they are approved. Once the data models are approved, call the "approve-data-models" tool with the data models. Data models are defined with the following format:
+Propose data models for the project. Work with the user to refine the data models until they are approved. Make sure to include every single data model needed for the project. Data models are defined with the following format:
 
 - Name: User
 - Description: A user of the app
@@ -337,6 +337,8 @@ Propose data models for the project. Work with the user to refine the data model
 - Relations:
   - hasMany: related model name
   - hasOne: related model name
+
+Once the data models are approved, call the "approve-data-models" tool with the data models. 
 `,
           },
         ],
@@ -383,7 +385,7 @@ Propose data models for the project. Work with the user to refine the data model
             type: "text",
             text: `Successfully saved data models.
 
-Propose API endpoints for the project. Work with the user to refine the API endpoints until they are approved. Once the API endpoints are approved, call the "approve-api-endpoints" tool with the API endpoints. API endpoints are defined with the following format:
+Propose every single API endpoint needed for the project. Work with the user to refine the API endpoints until they are approved. Once the API endpoints are approved, call the "approve-api-endpoints" tool with the API endpoints. API endpoints are defined with the following format:
 
 - Endpoint: /api/v1/users
 - Description: Get all users
@@ -438,12 +440,15 @@ Propose API endpoints for the project. Work with the user to refine the API endp
         content: [
           {
             type: "text",
-            text: `Successfully saved API endpoints. Now propose screens for the project. Work with the user to refine the screens until they are approved. Once the screens are approved, call the "approve-screens" tool with the screens. Screens are defined with the following format:
+            text: `Successfully saved API endpoints. 
+
+Now propose screens for the project, starting with the most important ones. List every single screen needed for the project. Work with the user to refine the screens until they are approved. Once the screens are approved, call the "approve-screens" tool with the screens. Screens are defined with the following format:
 
 - Name: Home
 - Path: /
-- Description: The home screen with a list of posts and a search bar
-`,
+- Description: A very detailed description of the screen. Include all the UI elements, and what they do. Be very specific.
+
+Once the screens are approved, call the "approve-screens" tool with the screens.`,
           },
         ],
       };

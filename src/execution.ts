@@ -218,9 +218,9 @@ export const registerExecutionTools = (server: McpServer) => {
               type: "text",
               text: `Set up this project techstack: 
                         
-${projectOverview.techStack}
+${JSON.stringify(projectOverview.techStack)}
 
-Use the most up-to-date documentation for the techstack. Make a plan.`,
+First make a plan using specific details, and then implement the plan. Look up the latest documentation for the techstack, and use official documentation.`,
             },
           ],
         };
@@ -243,9 +243,9 @@ Use the most up-to-date documentation for the techstack. Make a plan.`,
           content: [
             {
               type: "text",
-              text: `Set up this project components: 
+              text: `Set up the shared components for this project: 
                         
-${projectOverview.sharedComponents}
+${JSON.stringify(projectOverview.sharedComponents)}
 
 Make a plan to do each component. If a component is difficult, break it down into smaller components. Then make those components.`,
             },
@@ -274,7 +274,7 @@ Make a plan to do each component. If a component is difficult, break it down int
         if (project.stage === "components")
           await setStage(project, "dataModels");
         if (models.length === 0) {
-          await setStage(project, "apiEndpoints");
+          await setStage(project, "schemaGeneration");
           return {
             content: [
               {
@@ -285,14 +285,20 @@ Make a plan to do each component. If a component is difficult, break it down int
           };
         }
 
-        const nextModel = models[0];
-
         await db
           .update(dataModels)
           .set({
             status: "in progress",
           })
-          .where(eq(dataModels.id, nextModel.id));
+          .where(eq(dataModels.id, models[0].id));
+
+        const nextModel = {
+          name: models[0].name,
+          description: models[0].description,
+          status: models[0].status,
+          properties: models[0].properties,
+          relations: models[0].relations,
+        };
 
         return {
           content: [
@@ -300,7 +306,27 @@ Make a plan to do each component. If a component is difficult, break it down int
               type: "text",
               text: `Make the following model: ${JSON.stringify(
                 nextModel
-              )}, and save it as completed when done. Then call the get-next-task tool.`,
+              )}. Then save it as completed when done. Then call the get-next-task tool.`,
+            },
+          ],
+        };
+      } else if (project.stage === "schemaGeneration") {
+        const models = await db.query.dataModels.findMany({
+          where: and(
+            eq(dataModels.projectId, projectId),
+            eq(dataModels.status, "completed")
+          ),
+        });
+
+        if (!models) throw "Models not found";
+
+        await setStage(project, "apiEndpoints");
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Review all the models, and then generate the schema for the database. Write a file to create the tables or schema in the database, and then write a file to to seed the database with mock data. Then call the get-next-task tool.`,
             },
           ],
         };
@@ -341,7 +367,7 @@ Make a plan to do each component. If a component is difficult, break it down int
               type: "text",
               text: `Make the following api endpoint: ${JSON.stringify(
                 nextEndpoint
-              )} and save it as completed when done. Then call the get-next-task tool.`,
+              )} and save it as completed when done. Then call the get-next-task tool. Don't mock the data, use the actual data from the database.`,
             },
           ],
         };
@@ -367,22 +393,28 @@ Make a plan to do each component. If a component is difficult, break it down int
           };
         }
 
-        const nextScreen = uiScreens[0];
-
         await db
           .update(screens)
           .set({
             status: "in progress",
           })
-          .where(eq(screens.id, nextScreen.id));
+          .where(eq(screens.id, uiScreens[0].id));
+
+        const nextScreen = {
+          name: uiScreens[0].name,
+          description: uiScreens[0].description,
+          status: uiScreens[0].status,
+        };
 
         return {
           content: [
             {
               type: "text",
-              text: `Make the following screen: ${JSON.stringify(
-                nextScreen
-              )} and save it as completed when done. Then call the get-next-task tool.`,
+              text: `Make the following screen: 
+              
+              ${JSON.stringify(nextScreen)}
+              
+              Then save it as completed when done. Then call the get-next-task tool.`,
             },
           ],
         };

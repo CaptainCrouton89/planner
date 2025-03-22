@@ -85,8 +85,19 @@ export const projectOverviews = pgTable("project_overviews", {
   projectId: uuid("project_id")
     .notNull()
     .references(() => projects.id, { onDelete: "cascade" }),
-  techStack: jsonb("tech_stack").notNull(), // e.g. ["react", "node.js", "express", "postgresql"]
-  sharedComponents: jsonb("shared_components").notNull(), // e.g. [{ "name": "Button", "description": "A button component" }]
+  techStack: jsonb("tech_stack").$type<{
+    frontend: string;
+    backend: string;
+    database: string;
+    hosting: string;
+    auth: string;
+  }>(),
+  sharedComponents: jsonb("shared_components").$type<
+    {
+      name: string;
+      description: string;
+    }[]
+  >(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   status: statusEnum("status").notNull().default("open"),
