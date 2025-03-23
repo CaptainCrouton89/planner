@@ -25,7 +25,7 @@ const setStage = async (project: Project, stage: string) => {
 
 // cursor rules:
 /* 
-Whenever you don't know what to do, call the get-next-task tool.
+Whenever you don't know what to do, call the get-next-task-for-project tool.
 */
 
 export const registerExecutionTools = (server: McpServer) => {
@@ -85,7 +85,7 @@ export const registerExecutionTools = (server: McpServer) => {
         content: [
           {
             type: "text",
-            text: `Data model status set to ${status}. Get the next task.`,
+            text: `Data model status set to ${status}. Call the get-next-task-for-project tool.`,
           },
         ],
       };
@@ -123,7 +123,7 @@ export const registerExecutionTools = (server: McpServer) => {
         content: [
           {
             type: "text",
-            text: `Api endpoint status set to ${status}. Get the next task.`,
+            text: `Api endpoint status set to ${status}. Call the get-next-task-for-project tool.`,
           },
         ],
       };
@@ -152,7 +152,7 @@ export const registerExecutionTools = (server: McpServer) => {
         content: [
           {
             type: "text",
-            text: `Screen status set to ${status}. Get the next task.`,
+            text: `Screen status set to ${status}. Call the get-next-task-for-project tool.`,
           },
         ],
       };
@@ -191,7 +191,7 @@ export const registerExecutionTools = (server: McpServer) => {
 
   // Tool: Create a new project
   server.tool(
-    "get-next-task",
+    "get-next-task-for-project",
     "Get the next task to execute",
     {
       projectId: z.string().describe("ID of the project to execute"),
@@ -306,7 +306,7 @@ Make a plan to do each component. If a component is difficult, break it down int
               type: "text",
               text: `Make the following model: ${JSON.stringify(
                 nextModel
-              )}. Then save it as completed when done. Then call the get-next-task tool.`,
+              )}. Then save it as completed when done using the set-data-model-status tool.`,
             },
           ],
         };
@@ -326,7 +326,9 @@ Make a plan to do each component. If a component is difficult, break it down int
           content: [
             {
               type: "text",
-              text: `Review all the models, and then generate the schema for the database. Write a file to create the tables or schema in the database, and then write a file to to seed the database with mock data. Then call the get-next-task tool.`,
+              text: `Review all the models, and then write a file to create the tables or schema in the database. If using supabase, make sure to use RLS with the correct permissions. Output this file in the project directory, and ask the user to run it. When they confirm, run the command "npx supabase gen types typescript --project-id your-supabase-project-id --schema public > database.types.ts" to pull the types from the database.
+              
+              Then call the get-next-task-for-project tool.`,
             },
           ],
         };
@@ -367,7 +369,7 @@ Make a plan to do each component. If a component is difficult, break it down int
               type: "text",
               text: `Make the following api endpoint: ${JSON.stringify(
                 nextEndpoint
-              )} and save it as completed when done. Then call the get-next-task tool. Don't mock the data, use the actual data from the database.`,
+              )} and save it as completed when done using the set-api-endpoint-status tool. Then call the get-next-task-for-project tool. Don't mock the data, use the actual data from the database.`,
             },
           ],
         };
@@ -416,7 +418,7 @@ ${JSON.stringify(nextScreen)}
 
 Use real data from the database, not mock data. Check for an api endpoint or supabase to get the data you need.
               
-Then save it as completed when done. Then call the get-next-task tool.`,
+Then save it as completed when done using the set-screen-status tool. Then call the get-next-task-for-project tool.`,
             },
           ],
         };
@@ -433,7 +435,7 @@ Then save it as completed when done. Then call the get-next-task tool.`,
                         
 ${userStories}
 
-If any of them are not satisfied, make them. If all of them are satisfied, set the project status to finished.`,
+If any of them are not satisfied, make them. If all of them are satisfied, set the project status to finished using the set-project-status tool.`,
             },
           ],
         };

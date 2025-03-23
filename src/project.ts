@@ -185,9 +185,7 @@ export const registerProjectTools = (server: McpServer) => {
             - All capabilities of the app are listed and described in detail
             - The technical requirements are completely fleshed out
 
-          If the project's requirements aren't completely fleshed out, list questions the user needs to answer to gather more information in bullet points. 
-
-          If the project's requirements are completely fleshed out, call the "parse-and-save-requirements" tool with the requirements.`,
+          List questions the user needs to answer to gather more information in bullet points. Keep asking questions until all the requirements are completely fleshed out. Ask the user to approve the requirements before calling the "parse-and-save-requirements" tool.`,
           },
         ],
       };
@@ -196,18 +194,22 @@ export const registerProjectTools = (server: McpServer) => {
 
   server.tool(
     "parse-and-save-requirements",
-    "Parse and save project requirements from the user",
+    "Parse and save every single project requirement from the user",
     {
       projectId: z
         .string()
         .describe("ID of the project to save requirements for"),
-      requirements: z.string().describe("Requirements to parse and save"),
+      requirements: z
+        .array(z.string().describe("Detailed requirement"))
+        .describe("Detailed requirements to parse and save"),
     },
     withErrorHandling(async ({ projectId, requirements }) => {
-      await db.insert(projectRequirements).values({
-        projectId,
-        requirement: requirements,
-      });
+      await db.insert(projectRequirements).values(
+        requirements.map((requirement) => ({
+          projectId,
+          requirement,
+        }))
+      );
 
       return {
         content: [
@@ -271,12 +273,12 @@ export const registerProjectTools = (server: McpServer) => {
           {
             type: "text",
             text: `Successfully approved user stories.
-            
+
 Now propose a tech stack, auth method, and shared components. Work with the user to refine the tech stack, auth method, and shared components until they are approved. For example: 
 
 Tech stack:
-- Frontend: React
-- Backend: Node.js
+- Frontend: React with Next.js
+- Backend: Supabase and Next.js
 - Database: PostgreSQL on Supabase
 - Hosting: Vercel
 - Auth: Supabase
@@ -385,7 +387,7 @@ Once the data models are approved, call the "approve-data-models" tool with the 
             type: "text",
             text: `Successfully saved data models.
 
-Propose every single API endpoint needed for the project. Work with the user to refine the API endpoints until they are approved. Once the API endpoints are approved, call the "approve-api-endpoints" tool with the API endpoints. API endpoints are defined with the following format:
+Propose every single API endpoint needed for the project. Remember, supabase lets the frontend talk to the database directly, so you don't need to create API endpoints for most CRUD operations on the database. Work with the user to refine the API endpoints until they are approved. Once the API endpoints are approved, call the "approve-api-endpoints" tool with the API endpoints. API endpoints are defined with the following format:
 
 - Endpoint: /api/v1/users
 - Description: Get all users
@@ -446,7 +448,11 @@ Now propose screens for the project, starting with the most important ones. List
 
 - Name: Home
 - Path: /
-- Description: A very detailed description of the screen. Include all the UI elements, and what they do. Be very specific.
+- Description: 
+  A very detailed description of the screen. 
+  - The UI elements, and what they do.
+  - The outgoing links to other screens.
+  - The supabase database tables that are used to fetch the data for the screen.
 
 Once the screens are approved, call the "approve-screens" tool with the screens.`,
           },
